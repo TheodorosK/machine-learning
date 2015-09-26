@@ -29,9 +29,8 @@ tInd <- sample(1:nrow(cars), nTrain)
 cars.train <- cars[tInd, ]
 cars.test <- cars[-tInd, ]
 
-# estimate RMSE for all possible values of K
+# estimate RMSE for all possible values of k
 
-# takes about 70 secs in series
 tic()
 outRMSE <- sapply(2:100, function(k) {
   print(k)
@@ -41,19 +40,7 @@ outRMSE <- sapply(2:100, function(k) {
 })
 toc()
 
-# takes about 30 secs in parallel
-# not that much better!
-tic()
-ncores <- detectCores()
-clust <- makeCluster(ncores, type = "FORK")
-
-outRMSE.par <- parSapply(cl = clust, X = 2:100, function(k) {
-  kn <- kknn(price ~ mileage, train = cars.train, test = cars.test, k = k)
-  rmse <- sqrt(mean((cars.test$price - kn$fitted.values)^2))
-  return(rmse)
-})
-
-stopCluster(clust)  
-toc()
-
 plot(outRMSE)
+kMin <- which.min(outRMSE)
+
+# TODO: n-fold cross validation (would be the "right" way to do this)
