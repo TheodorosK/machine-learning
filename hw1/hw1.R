@@ -20,10 +20,10 @@ cars <- read.csv("../data/susedcars.csv")
 lin <- glm(price ~ mileage, data = cars)
 
 g <- ggplot() + geom_point(data=cars, aes(x=mileage, y=price)) +
-        geom_abline(aes(intercept = lin$coefficients[1],
-                        slope = lin$coefficients[2]), color="red", size=1.25) + 
-        labs(x="Mileage", y="Price [$]") +
-        ggtitle("Linear Regression of Price on Mileage")
+  geom_abline(aes(intercept = lin$coefficients[1],
+                  slope = lin$coefficients[2]), color="red", size=1.25) + 
+  labs(x="Mileage", y="Price [$]") +
+  ggtitle("Linear Regression of Price on Mileage")
 print(g)
 
 #
@@ -51,7 +51,7 @@ out$kknnRmse <- sapply(out$nn, function(k) {
 cat("done.\n")
 
 print(ggplot(data=out, aes(nn, kknnRmse)) + geom_point() + geom_line() +
-      labs(x="Nearest Neighbors", y="RMSE"))
+        labs(x="Nearest Neighbors", y="RMSE"))
 
 print(sprintf("kknn Min RMSE=%3.2f (@%d nearest neighbors)", 
               min(out$kknnRmse), out$nn[which.min(out$kknnRmse)]))
@@ -99,18 +99,18 @@ cat("done.\n")
 #
 # Visualize RMSE ----
 #
-algMins <- data.frame(alg=c("kknn", "cv"), 
+algMins <- data.frame(algo=c("kknn", "cv"), 
                       nn = c(out$nn[which.min(out$kknnRmse)],
                              out$nn[which.min(out$cvRmse)]),
                       rmse = c(min(out$kknnRmse), min(out$cvRmse)))
 
 # Plot the RMSE for difference # of Nearest Neighbors
 outMelted <- melt(out, id.vars = "nn")
-g <- ggplot(data=outMelted, 
-            aes(x=nn, y=value, color=variable)) + 
+g <- ggplot(data=outMelted, aes(x=nn, y=value, color=variable)) +
   geom_point() + geom_line() +
-#   geom_point(data = algMins, aes(x=nn, y=rmse, color=alg, size=4)) +
-  scale_color_discrete("Method", labels=c("Naive KKNN", " Cross-Validated KKNN")) +
-  labs(x="# of Nearest Neighbors", y="RMSE") + 
+  scale_color_discrete("Method", labels=c("Naive KKNN", "Cross-Validated KKNN")) +
+  labs(x="# of Nearest Neighbors", y="RMSE") +
+  geom_vline(data=algMins, aes(xintercept=nn, group=algo)) +
+#   geom_point(aes(nn, rmse), data=algMins) +
   ggtitle("RMSE vs. # of Nearest Neighbors for KKNN")
-plot(g)
+print(g)
