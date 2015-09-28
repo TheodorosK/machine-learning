@@ -19,13 +19,6 @@ cars <- read.csv("../data/susedcars.csv")
 # Visualize
 lin <- glm(price ~ mileage, data = cars)
 
-# # Reformat linear coefficients for plotting (there's probably an easier way)
-# # mileage=mx+b
-# # 1/m*Y +(-b/m) = X
-# # (y-b)/m = x
-# linCoefs <- data.frame("intercept" = -lin$coefficients[1]/lin$coefficients[2],
-#                        "slope" = 1/lin$coefficients[2])
-# 
 g <- ggplot() + geom_point(data=cars, aes(x=mileage, y=price)) +
         geom_abline(aes(intercept = lin$coefficients[1],
                         slope = lin$coefficients[2]), color="red", size=1.25) + 
@@ -102,10 +95,22 @@ out$cvRmse <- sapply(out$nn, function(k) {
 })
 cat("done.\n")
 
-# TODO: should get cleaned up and put in ggplot2
 
+#
+# Visualize RMSE ----
+#
+algMins <- data.frame(alg=c("kknn", "cv"), 
+                      nn = c(out$nn[which.min(out$kknnRmse)],
+                             out$nn[which.min(out$cvRmse)]),
+                      rmse = c(min(out$kknnRmse), min(out$cvRmse)))
+
+# Plot the RMSE for difference # of Nearest Neighbors
 outMelted <- melt(out, id.vars = "nn")
 g <- ggplot(data=outMelted, 
-            aes(x=nn, y=value, group=variable, color=factor(variable))) + 
-  geom_point() + geom_line() + labs(x="# of Nearest Neighbors", y="RMSE")
+            aes(x=nn, y=value, color=variable)) + 
+  geom_point() + geom_line() +
+#   geom_point(data = algMins, aes(x=nn, y=rmse, color=alg, size=4)) +
+  scale_color_discrete("Method", labels=c("Naive KKNN", " Cross-Validated KKNN")) +
+  labs(x="# of Nearest Neighbors", y="RMSE") + 
+  ggtitle("RMSE vs. # of Nearest Neighbors for KKNN")
 plot(g)
