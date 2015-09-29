@@ -19,10 +19,10 @@ cars <- read.csv("../data/susedcars.csv")
 # Visualize
 lin <- glm(price ~ mileage, data = cars)
 
-g <- ggplot() + geom_point(data=cars, aes(x=mileage, y=price)) +
-  geom_abline(aes(intercept = lin$coefficients[1],
-                  slope = lin$coefficients[2]), color="red", size=1.25) + 
-  labs(x="Mileage", y="Price [$]") +
+g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000)) +
+  geom_abline(aes(intercept = lin$coefficients[1]/1000,
+                  slope = lin$coefficients[2]), color="red", size=1.25) +
+  labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
   ggtitle("Linear Regression of Price on Mileage")
 print(g)
 
@@ -59,8 +59,6 @@ print(sprintf("kknn Min RMSE=%3.2f (@%d nearest neighbors)",
 #
 # KNN (CV) ----
 #
-# TODO: n-fold cross validation (would be the "right" way to do this)
-# code should get cleaned up, variable names follow no convetion, plots are ugly as hell
 
 # This is the packaged way to do it, but the documentation is terrible
 # "cv.kknn performs k-fold crossvalidation and is generally slower and does not
@@ -130,14 +128,19 @@ kValues <- sort(c(2, 400, 40))
 fitted <- data.frame(mileage = cars.test.sorted$mileage,
                      sapply(kValues, test=cars.test.sorted, FUN=fittedK))
 
-g <- ggplot() + geom_point(data=cars, aes(x=mileage, y=price), alpha=0.4) +
-  geom_line(data=melt(fitted, id.vars="mileage"), 
-            aes(x=mileage, y=value, color=variable), size=0.75) +
-  geom_abline(aes(intercept = lin$coefficients[1],
-                  slope = lin$coefficients[2], color="break"), size=0.5, show_guide=T) +
-  scale_color_discrete(
-    "Algorithm",
-    labels=c("Linear", sapply(kValues, function(k) sprintf("kknn\n(k=%d)", k)))) +
-  guides(shape=guide_legend(override.aes = list(linetype = 0)))
 # Legend still has slashes despite my best efforts with guides. :(
+# wclark3: show_guide = F fixes this
+
+g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0.3) +
+  geom_line(data=melt(fitted, id.vars="mileage"), 
+            aes(x=mileage/1000, y=value/1000, color=variable), size=1.25) +
+  geom_abline(aes(intercept = lin$coefficients[1]/1000,
+                  slope = lin$coefficients[2], color="break"), size=1.25, show_guide=F) +
+  scale_color_discrete("Algorithm",
+    labels=c("Linear", sapply(kValues, function(k) sprintf("kknn\n(k=%d)", k))),
+    h = c(0, 360), l = 50, h.start = 20) +
+  guides(shape=guide_legend(override.aes = list(linetype = 0))) + 
+  labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
+  ggtitle("Predictive Models for Car Price vs. Mileage") + 
+  theme_bw() + theme(legend.position = c(0.9, 0.75))
 plot(g)
