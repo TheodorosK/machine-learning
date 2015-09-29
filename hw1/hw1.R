@@ -105,12 +105,18 @@ algMins <- data.frame(algo=c("kknn", "cv"),
                       rmse = c(min(out$kknnRmse), min(out$cvRmse)))
 
 # Plot the RMSE for difference # of Nearest Neighbors
-outMelted <- melt(out, id.vars = "nn")
-g <- ggplot(data=outMelted, aes(x=nn, y=value, color=variable)) +
-  geom_point() + geom_line() +
-  scale_color_discrete("Method", labels=c("Naive KKNN", "Cross-Validated KKNN")) +
+library(dplyr)
+library(reshape2)
+out.me <- melt(out, id.vars = "nn")
+out.mins.me <- out.me %>% group_by(variable) %>% mutate(shape = min(value) == value)
+
+g <- ggplot(data=out.me, aes(x=nn, y=value, color=variable)) +
+  geom_line() + geom_point() + 
+  scale_color_discrete("Method", labels=c("kknn\n (OOS - 10% holdout)", "kknn\n (CV - 10-fold)")) +
   labs(x="# of Nearest Neighbors", y="RMSE") +
-  geom_vline(data=algMins, aes(xintercept=nn, group=algo)) +
-#   geom_point(aes(nn, rmse), data=algMins) +
+  geom_point(data=out.mins.me, aes(shape=shape), size=5, na.rm = T, show_guide=F) +
+  scale_shape_manual(values = c(NA, 1)) +
   ggtitle("RMSE vs. # of Nearest Neighbors for KKNN")
 print(g)
+
+# Plot various k values ----
