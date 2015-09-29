@@ -130,15 +130,24 @@ fitted <- data.frame(mileage = cars.test.sorted$mileage,
 
 # Legend still has slashes despite my best efforts with guides. :(
 # wclark3: show_guide = F fixes this
+#   also switched to scale_color_manual so I could make the linear fit black
+#   (thought the default coloration was hard to look at)
+
+# Replicates the ggplot2 color palette
+# http://stackoverflow.com/questions/8197559/emulate-ggplot2-default-color-palette
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length=n+1)
+  hcl(h=hues, l=65, c=100)[1:n]
+}
 
 g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0.3) +
   geom_line(data=melt(fitted, id.vars="mileage"), 
             aes(x=mileage/1000, y=value/1000, color=variable), size=1.25) +
   geom_abline(aes(intercept = lin$coefficients[1]/1000,
-                  slope = lin$coefficients[2], color="break"), size=1.25, show_guide=F) +
-  scale_color_discrete("Algorithm",
-    labels=c("Linear", sapply(kValues, function(k) sprintf("kknn\n(k=%d)", k))),
-    h = c(0, 360), l = 50, h.start = 20) +
+                  slope = lin$coefficients[2], color="break"), size=0.75, lty="dashed") +
+  scale_color_manual(values = c("#000000", gg_color_hue(3)),
+                     name = "Algorithm",
+                     labels = c("Linear", sapply(kValues, function(k) sprintf("kknn\n(k=%d)", k)))) +
   guides(shape=guide_legend(override.aes = list(linetype = 0))) + 
   labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
   ggtitle("Predictive Models for Car Price vs. Mileage") + 
