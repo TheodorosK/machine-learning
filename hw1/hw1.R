@@ -120,3 +120,24 @@ g <- ggplot(data=out.me, aes(x=nn, y=value, color=variable)) +
 print(g)
 
 # Plot various k values ----
+fittedK <- function(k, test) {
+  kn <- kknn(price ~ mileage, train = cars.train, test = test, k = k)
+  return(kn$fitted.values)
+}
+
+cars.test.sorted <- cars.test[order(cars.test$mileage),]
+kValues <- sort(c(2, 400, 40))
+fitted <- data.frame(mileage = cars.test.sorted$mileage,
+                     sapply(kValues, test=cars.test.sorted, FUN=fittedK))
+
+g <- ggplot() + geom_point(data=cars, aes(x=mileage, y=price), alpha=0.4) +
+  geom_line(data=melt(fitted, id.vars="mileage"), 
+            aes(x=mileage, y=value, color=variable), size=0.75) +
+  geom_abline(aes(intercept = lin$coefficients[1],
+                  slope = lin$coefficients[2], color="break"), size=0.5, show_guide=T) +
+  scale_color_discrete(
+    "Algorithm",
+    labels=c("Linear", sapply(kValues, function(k) sprintf("kknn\n(k=%d)", k)))) +
+  guides(shape=guide_legend(override.aes = list(linetype = 0)))
+# Legend still has slashes despite my best efforts with guides. :(
+plot(g)
