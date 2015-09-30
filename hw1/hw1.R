@@ -21,15 +21,18 @@ set.seed(926)
 #
 cars <- read.csv("../data/susedcars.csv")
 
-# Visualize
+# Linear Fit ----
 lin <- glm(price ~ mileage, data = cars)
 
-g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000)) +
+g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0.3) +
   geom_abline(aes(intercept = lin$coefficients[1]/1000,
-                  slope = lin$coefficients[2]), color="red", size=1.25) +
+                  slope = lin$coefficients[2]), color="black", linetype='dashed', size=1.25) +
   labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
-  ggtitle("Linear Regression of Price on Mileage")
+  ggtitle("Linear Regression of Price on Mileage") +
+  theme_bw()
+PlotSetup("linear_fit")
 print(g)
+PlotDone()
 
 #
 # Knn (No CV) ----
