@@ -136,7 +136,7 @@ fittedK <- function(k, test) {
 }
 
 cars.test.sorted <- cars.test[order(cars.test$mileage),]
-kValues <- sort(c(2, 400, 40))
+kValues <- sort(c(12, 40, 500))
 fitted <- data.frame(mileage = cars.test.sorted$mileage,
                      sapply(kValues, test=cars.test.sorted, FUN=fittedK))
 
@@ -157,7 +157,7 @@ g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0
             aes(x=mileage/1000, y=value/1000, color=variable), size=1.25) +
   geom_abline(aes(intercept = lin$coefficients[1]/1000,
                   slope = lin$coefficients[2], color="break"), size=0.75, lty="dashed") +
-  scale_color_manual(values = c("#000000", gg_color_hue(3)),
+  scale_color_manual(values = c("#000000", gg_color_hue(length(kValues))),
                      name = "Algorithm",
                      labels = c("Linear", sapply(kValues, function(k) sprintf("kNN (k=%d)", k)))) +
   guides(shape=guide_legend(override.aes = list(linetype = 0))) + 
