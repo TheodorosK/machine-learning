@@ -4,6 +4,11 @@
 #
 rm(list = ls())
 
+source('../utils/source_me.R', chdir = T)
+plotOpts$Prefix <- 'writeup/'
+OutputToFile <- T
+
+
 library(ggplot2)
 library(kknn)
 library(cvTools)
@@ -114,8 +119,12 @@ g <- ggplot(data=out.me, aes(x=nn, y=value, color=variable)) +
   labs(x="# of Nearest Neighbors", y="RMSE") +
   geom_point(data=out.mins.me, aes(shape=shape), size=5, na.rm = T, show_guide=F) +
   scale_shape_manual(values = c(NA, 1)) +
-  ggtitle("RMSE vs. # of Nearest Neighbors for KKNN")
+  ggtitle("RMSE vs. # of Nearest Neighbors for KKNN") +
+  theme_bw() + theme(legend.position = c(0.8, 0.85))
+
+PlotSetup('sweep_kknn')
 print(g)
+PlotDone()
 
 # Plot various k values ----
 fittedK <- function(k, test) {
@@ -152,7 +161,10 @@ g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0
   labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
   ggtitle("Predictive Models for Car Price vs. Mileage") + 
   theme_bw() + theme(legend.position = c(0.9, 0.75))
+
+PlotSetup('pred_models')
 plot(g)
+PlotDone()
 
 ##
 ## Predict
