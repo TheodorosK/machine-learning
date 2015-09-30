@@ -26,7 +26,7 @@ To describe this data, we first estimate a linear model of mileage on price:
 \[ p_i = \alpha + \beta m_i + \varepsilon_i \]
 where \(p_i\) is the price of car \(i\), \(m_i\) is the observed mileage on car \(i\), \(\alpha\) and \(\beta\) are estimated regression coefficients, and \(\varepsilon_i\) is the residual. We fit a generalized linear model to the data and find that \(\alpha=56359.7\) and \(\beta=-0.35\). That is, a hypothetical used car with no miles would sell for about \$56 thousand, and each additional mile driven lowers a car's expected selling price by \$0.35.
 
-As depicted in \cref{fig:linear}, this model appears to be a weak fit for the data. It improperly values ca
+As depicted in \cref{fig:linear}, this model appears to be a weak fit for the data. The distribution of residuals is not normally distributed. The model tends to systematically under-value cars with very low mileage and with very high mileage (see \cref{fig:lin_errors} in the Appendix). 
 
 \begin{figure}[!htb]
   \centering
@@ -35,14 +35,31 @@ As depicted in \cref{fig:linear}, this model appears to be a weak fit for the da
   \label{fig:linear}
 \end{figure}
 
+As an alternative to a linear model, 
 
-% Linear regression
-
+\section{kNN}
 % knn
 % use in-sample RMSE
 % use n-fold cross-validation
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{sweep_kknn.pdf}
+  \caption{CV and OOS RMSE for Various Values of k in kNN}
+  \label{fig:sweep}
+\end{figure}
+
+
 % Predict car price with cross-validated knn and with linear model
+
+\section{Appendix}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{lin_errors.pdf}
+  \caption{Distribution of Residuals in Linear Model}
+  \label{fig:lin_errors}
+\end{figure}
 
 \end{document}
 
