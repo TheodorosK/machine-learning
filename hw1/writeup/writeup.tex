@@ -55,7 +55,13 @@ where \(p_i\) is the observed price of car \(i\) and \(\hat{p_i}\) is the predic
 % use n-fold cross-validation
 \subsection{n-fold Cross Validation}
 
-The alternative method is to choose \(k\) via cross validation. In this method, we will measure out-of-sample fit 
+The alternative method is to choose \(k\) via cross validation. In this method, we will measure out-of-sample fit in the same method as in the prior section (via RMSE), but we will average the out-of-sample fit of ten different training sets. The algorithm, briefly:
+\begin{enumerate}
+\item For all \(k \in (2,100)\):
+\begin{enumerate}
+\item For all \(n \in (1, 10)\):
+\end{enumerate}
+\end{enumerate}
 
 \begin{figure}[!htb]
   \centering
@@ -66,6 +72,13 @@ The alternative method is to choose \(k\) via cross validation. In this method, 
 
 \section{Predictions}
 % Predict car price with cross-validated knn and with linear model
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{predict.pdf}
+  \caption{Linear & kNN Predictions}
+  \label{fig:predict}
+\end{figure}
 
 \section{Appendix}
 
