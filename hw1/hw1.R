@@ -159,7 +159,7 @@ g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0
                   slope = lin$coefficients[2], color="break"), size=0.75, lty="dashed") +
   scale_color_manual(values = c("#000000", gg_color_hue(3)),
                      name = "Algorithm",
-                     labels = c("Linear", sapply(kValues, function(k) sprintf("kknn\n(k=%d)", k)))) +
+                     labels = c("Linear", sapply(kValues, function(k) sprintf("kNN (k=%d)", k)))) +
   guides(shape=guide_legend(override.aes = list(linetype = 0))) + 
   labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
 #   ggtitle("Predictive Models for Car Price vs. Mileage") + 
@@ -172,10 +172,34 @@ PlotDone()
 ##
 ## Predict ----
 ##
-
-lin.pred <- predict(lin, data.frame(mileage=100e3))
+miles.predict = c(100e3)
+lin.pred <- predict(lin, data.frame(mileage=miles.predict))
 # predicted price: $21,362.33 
 
 kCVmin <- algMins$nn[algMins$algo == "cv"]
-knn.pred <- kknn(price ~ mileage, train = cars, test = data.frame(mileage=100e3), k = kCVmin)
+knn.pred <- kknn(price ~ mileage, train = cars, test = data.frame(mileage=miles.predict), k = kCVmin)
 # predicted price: kn.pred$fitted.values ($17,936.67)
+
+preds <- data.frame(mileage = miles.predict,
+                    linear.pred = lin.pred,
+                    knn.pred = knn.pred$fitted.values)
+cars.sorted <- cars[order(cars$mileage),]
+knnFit40 = data.frame(mileage = cars.sorted$mileage,
+                      pred = fittedK(40, cars.sorted))
+
+g <- ggplot() +
+  geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0.3) +
+  geom_line(data=knnFit40, aes(x=mileage/1000, y=pred/1000), color=gg_color_hue(2)[2], size=1.25) +
+  geom_abline(aes(intercept = lin$coefficients[1]/1000,
+                  slope = lin$coefficients[2]), color=gg_color_hue(2)[1], linetype='dashed', size=1.25) +
+  geom_point(data=melt(preds, id.vars='mileage'),
+             aes(x=mileage/1000, y=value/1000, fill=variable),
+             color='black', pch=21, size=4) +
+  scale_fill_manual(values = c(gg_color_hue(2)),
+                     name = "Algorithm",
+                     labels = c("Linear Regression", "kNN (k=40)")) +
+  labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
+  theme_bw() + theme(legend.position = c(0.8, 0.85))
+PlotSetup("predict")
+print(g)
+PlotDone()
