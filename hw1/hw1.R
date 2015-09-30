@@ -194,7 +194,7 @@ g <- ggplot() +
                   slope = lin$coefficients[2]), color=gg_color_hue(2)[1], linetype='dashed', size=1.25) +
   geom_point(data=melt(preds, id.vars='mileage'),
              aes(x=mileage/1000, y=value/1000, fill=variable),
-             color='black', pch=21, size=4) +
+             color='black', pch=21, size=5) +
   scale_fill_manual(values = c(gg_color_hue(2)),
                      name = "Algorithm",
                      labels = c("Linear Regression", "kNN (k=40)")) +
