@@ -50,18 +50,27 @@ The decision we are faced with is choosing a value for the k-number of nearest n
 To choose \(k\) using out-of-sample RMSE, we break our data into a training sample (with 900 data points) to train a model, and a test sample (with the remaining 100 points) to estimate the model's goodness of fit. We then estimate a model for all values of \(k \in (2,100)\) and compare their out-of-sample RMSEs, where RMSE is defined by:
 \[ \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \left( p_i - \hat{p_i} \right)^2} \]
 
-where \(p_i\) is the observed price of car \(i\) and \(\hat{p_i}\) is the predicted price of car \(i\) given its mileage. The RMSE is a measure of how closely a model fits the data; in this case, what we care about is how well the model fits data points that it has not been trained on. We then choose \(k\) that produces the lowest out-of-sample RMSE. The results are depicted in \cref{fig:sweep} (in the red line). We can see that the minimum RMSE occurs at \(k=11\), which is circled on the plot.
+where \(p_i\) is the observed price of car \(i\) and \(\hat{p_i}\) is the predicted price of car \(i\) given its mileage. The RMSE is a measure of how closely a model fits the data; in this case, what we care about is how well the model fits data points that it has not been trained on. We then choose \(k\) that produces the lowest out-of-sample RMSE. The results are depicted in \cref{fig:sweep} (in the red line). We can see that the minimum RMSE occurs at \(k=12\), which is circled in the plot.\footnote{The value of \(k\) selected depends heavily on the hold-out sample, which is selected randomly. We set R's random number generator seed in this example, but letting it vary produces very different values of \(k\) fluctuating around the cross-validated \(k\) shown in next section.}
 
 % use n-fold cross-validation
 \subsection{n-fold Cross Validation}
 
-The alternative method is to choose \(k\) via cross validation. In this method, we will measure out-of-sample fit in the same method as in the prior section (via RMSE), but we will average the out-of-sample fit of ten different training sets. The algorithm, briefly:
-\begin{enumerate}
+The alternative method is to choose \(k\) via cross validation. In this method, we will measure out-of-sample fit in the same method as in the prior section (via RMSE), but we will average the out-of-sample fit of ten different training sets (i.e. n-fold cross-validation with \(n=10\)). The algorithm, briefly:
+\begin{itemize}
 \item For all \(k \in (2,100)\):
-\begin{enumerate}
+\begin{itemize}
+\item Break the sample into 10 different data sets
 \item For all \(n \in (1, 10)\):
-\end{enumerate}
-\end{enumerate}
+\begin{itemize}
+\item Hold out the \(n\)-th data set; train a model on the remaining data
+\item Calculate the RMSE of the \(n\)-th (held out) data set based on the predicted values of the k-nn model
+\end{itemize}
+\item Each \(k\) will have \(n\) RMSE values; take the average of all these RMSEs.
+\end{itemize}
+\item Select the model (\(k\)) with the lowest average RMSE (which we will call cross-validated error).
+\end{itemize}
+
+The resulting RMSE for various values of k is shown in \cref{fig:sweep} (the light blue line). The \(k\) that results in the lowest cross-validated error is \(k=40\), which is circled in blue in the figure.\footnote{As a comparison, using the \texttt{kknn} package's built-in algorithm for hold-one-out cross-validation selects a model with \(k=41\), so our result is close to optimal.}
 
 \begin{figure}[!htb]
   \centering
@@ -70,13 +79,20 @@ The alternative method is to choose \(k\) via cross validation. In this method, 
   \label{fig:sweep}
 \end{figure}
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{pred_models.pdf}
+  \caption{}
+  \label{fig:models}
+\end{figure}
+
 \section{Predictions}
 % Predict car price with cross-validated knn and with linear model
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[scale=.5]{predict.pdf}
-  \caption{Linear & kNN Predictions}
+  \caption{Linear \& kNN Predictions}
   \label{fig:predict}
 \end{figure}
 
