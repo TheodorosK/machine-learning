@@ -1,0 +1,47 @@
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage[margin=1in]{geometry} % To set the margin widths
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{varioref}
+\usepackage[noabbrev,capitalize]{cleveref}
+\usepackage[group-separator={,}]{siunitx}
+\usepackage{subcaption}
+\usepackage{titlesec}
+\usepackage{bm}
+% \usepackage{hyperref}
+
+% \lstset{
+%   frame=top,frame=bottom,
+%   basicstyle=\small\normalfont\sffamily,    % the size of the fonts that are used for the code
+%   stepnumber=1,                           % the step between two line-numbers. If it is 1 each line will be numbered
+%   numbersep=10pt,                         % how far the line-numbers are from the code
+%   tabsize=2,                              % tab size in blank spaces
+%   extendedchars=true,                     %
+%   breaklines=true,                        % sets automatic line breaking
+%   captionpos=b,                           % sets the caption-position to top
+%   mathescape=true,
+%   stringstyle=\color{white}\ttfamily, % Farbe der String
+%   showspaces=false,           % Leerzeichen anzeigen ?
+%   showtabs=false,             % Tabs anzeigen ?
+%   xleftmargin=17pt,
+%   framexleftmargin=17pt,
+%   framexrightmargin=17pt,
+%   framexbottommargin=5pt,
+%   framextopmargin=5pt,
+%   showstringspaces=false      % Leerzeichen in Strings anzeigen ?
+% }
+
+
+\lstset{
+  captionpos=b,
+  frame=single,
+  language=R,
+  literate = {<-}{{$\gets$}}1 {~}{{$\sim$}}1
+}
+
+\sisetup{output-exponent-marker=\textsc{e}}
+
+\titleformat{\section}[block]{\bfseries}{\thesection}{1em}{}
