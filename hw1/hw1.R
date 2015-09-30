@@ -203,3 +203,19 @@ g <- ggplot() +
 PlotSetup("predict")
 print(g)
 PlotDone()
+
+##
+## Error distribution ----
+##
+
+epsilon <- data.frame(mileage = cars$mileage, price = cars$price, error = lin$residuals)
+# epsilon <- epsilon[order(epsilon$price, decreasing = T), ]
+
+g <- ggplot() + geom_point(data = epsilon, aes(x = mileage/1000, y = error/1000)) + 
+  labs(x = "Mileage [1000 miles]", y = "Linear Model Residual [1000 $]") + 
+  ggtitle("Distribution of Linear Model Residuals by Car Mileage") + 
+  geom_hline(yintercept = 0, lty = "dashed") + theme_bw()
+
+print(g)
+
+# plot(epsilon$error)
