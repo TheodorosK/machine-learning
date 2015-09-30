@@ -12,7 +12,7 @@
 
 \begin{document}
 
-\title{Machine Learning () HW #1}
+\title{Machine Learning () HW \#1}
 \author{Will Clark \& Matthew DeLio \\
 University of Chicago Booth School of Business}
 \date{\today}
@@ -20,7 +20,11 @@ University of Chicago Booth School of Business}
 
 % Describe the data, show a plot of mileage vs price
 
+\section{Data Description}
+
 The data set for this exercise the sale price and observed mileage for 1000 used cars. We can see in \cref{fig:linear} that the expected inverse relationship between mileage and sale price is borne out by the data (i.e. high-mileage cars are less expensive than low-mileage cars).
+
+\section{Linear Regression Model}
 
 To describe this data, we first estimate a linear model of mileage on price:
 \[ p_i = \alpha + \beta m_i + \varepsilon_i \]
@@ -35,12 +39,23 @@ As depicted in \cref{fig:linear}, this model appears to be a weak fit for the da
   \label{fig:linear}
 \end{figure}
 
-As an alternative to a linear model, 
+\section{k-Nearest Neighbors Algorithm}
 
-\section{kNN}
-% knn
-% use in-sample RMSE
+As an alternative to a linear model, we can use a k-nearest neighbors (knn) algorithm. This algorithm will compute an expected price for every given mileage by taking an average of the observed price for the k-number of cars with the closest observed mileage. 
+
+The decision we are faced with is choosing a value for the k-number of nearest neighbors to include in the algorithm. There are many different decision criteria we could use, but we will focus on two: 1) out-of-sample root mean square error (RMSE); and 2) n-fold cross-validation (CV).
+
+\subsection{Out-of-Sample RMSE}
+
+To choose \(k\) using out-of-sample RMSE, we break our data into a training sample (with 900 data points) to train a model, and a test sample (with the remaining 100 points) to estimate the model's goodness of fit. We then estimate a model for all values of \(k \in (2,100)\) and compare their out-of-sample RMSEs, where RMSE is defined by:
+\[ \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \left( p_i - \hat{p_i} \right)^2} \]
+
+where \(p_i\) is the observed price of car \(i\) and \(\hat{p_i}\) is the predicted price of car \(i\) given its mileage. The RMSE is a measure of how closely a model fits the data; in this case, what we care about is how well the model fits data points that it has not been trained on. We then choose \(k\) that produces the lowest out-of-sample RMSE. The results are depicted in \cref{fig:sweep} (in the red line). We can see that the minimum RMSE occurs at \(k=11\), which is circled on the plot.
+
 % use n-fold cross-validation
+\subsection{n-fold Cross Validation}
+
+The alternative method is to choose \(k\) via cross validation. In this method, we will measure out-of-sample fit 
 
 \begin{figure}[!htb]
   \centering
@@ -49,7 +64,7 @@ As an alternative to a linear model,
   \label{fig:sweep}
 \end{figure}
 
-
+\section{Predictions}
 % Predict car price with cross-validated knn and with linear model
 
 \section{Appendix}
