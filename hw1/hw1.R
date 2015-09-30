@@ -153,3 +153,14 @@ g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0
   ggtitle("Predictive Models for Car Price vs. Mileage") + 
   theme_bw() + theme(legend.position = c(0.9, 0.75))
 plot(g)
+
+##
+## Predict
+##
+
+lin.pred <- predict(lin, data.frame(mileage=100e3))
+# predicted price: $21,362.33 
+
+kCVmin <- algMins$nn[algMins$algo == "cv"]
+knn.pred <- kknn(price ~ mileage, train = cars, test = data.frame(mileage=100e3), k = kCVmin)
+# predicted price: kn.pred$fitted.values ($17,936.67)
