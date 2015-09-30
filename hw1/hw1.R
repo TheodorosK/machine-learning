@@ -28,7 +28,7 @@ g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0
   geom_abline(aes(intercept = lin$coefficients[1]/1000,
                   slope = lin$coefficients[2]), color="black", linetype='dashed', size=1.25) +
   labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
-  ggtitle("Linear Regression of Price on Mileage") +
+#   ggtitle("Linear Regression of Price on Mileage") +
   theme_bw()
 PlotSetup("linear_fit")
 print(g)
@@ -58,8 +58,8 @@ out$kknnRmse <- sapply(out$nn, function(k) {
 })
 cat("done.\n")
 
-print(ggplot(data=out, aes(nn, kknnRmse)) + geom_point() + geom_line() +
-        labs(x="Nearest Neighbors", y="RMSE"))
+# print(ggplot(data=out, aes(nn, kknnRmse)) + geom_point() + geom_line() +
+#         labs(x="Nearest Neighbors", y="RMSE"))
 
 print(sprintf("kknn Min RMSE=%3.2f (@%d nearest neighbors)", 
               min(out$kknnRmse), out$nn[which.min(out$kknnRmse)]))
@@ -122,7 +122,7 @@ g <- ggplot(data=out.me, aes(x=nn, y=value, color=variable)) +
   labs(x="# of Nearest Neighbors", y="RMSE") +
   geom_point(data=out.mins.me, aes(shape=shape), size=5, na.rm = T, show_guide=F) +
   scale_shape_manual(values = c(NA, 1)) +
-  ggtitle("RMSE vs. # of Nearest Neighbors for KKNN") +
+#   ggtitle("RMSE vs. # of Nearest Neighbors for KKNN") +
   theme_bw() + theme(legend.position = c(0.8, 0.85))
 
 PlotSetup('sweep_kknn')
@@ -162,7 +162,7 @@ g <- ggplot() + geom_point(data=cars, aes(x=mileage/1000, y=price/1000), alpha=0
                      labels = c("Linear", sapply(kValues, function(k) sprintf("kknn\n(k=%d)", k)))) +
   guides(shape=guide_legend(override.aes = list(linetype = 0))) + 
   labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
-  ggtitle("Predictive Models for Car Price vs. Mileage") + 
+#   ggtitle("Predictive Models for Car Price vs. Mileage") + 
   theme_bw() + theme(legend.position = c(0.9, 0.75))
 
 PlotSetup('pred_models')
@@ -170,7 +170,7 @@ plot(g)
 PlotDone()
 
 ##
-## Predict
+## Predict ----
 ##
 
 lin.pred <- predict(lin, data.frame(mileage=100e3))
