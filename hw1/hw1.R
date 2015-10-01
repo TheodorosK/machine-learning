@@ -217,11 +217,11 @@ k12.rmse <- sqrt(mean((cars.test$price - k12.pred$fitted.values)^2))
 k40.pred <- kknn(price ~ mileage, train = cars.train, test = cars.test, k=40)
 k40.rmse <- sqrt(mean((cars.test$price - k40.pred$fitted.values)^2))
 
-k400.pred <- kknn(price ~ mileage, train = cars.train, test = cars.test, k=400)
-k400.rmse <- sqrt(mean((cars.test$price - k400.pred$fitted.values)^2))
+k500.pred <- kknn(price ~ mileage, train = cars.train, test = cars.test, k=500)
+k500.rmse <- sqrt(mean((cars.test$price - k500.pred$fitted.values)^2))
 
-rmse_compare <- data.frame(Algorithm=c("Linear", "kNN ($k=12$)", "kNN ($k=40$)", "kNN ($k=400$)"),
-                           RMSE=c(lin.rmse, k12.rmse, k40.rmse, k400.rmse), row.names="Algorithm")
+rmse_compare <- data.frame(Algorithm=c("Linear", "kNN ($k=12$)", "kNN ($k=40$)", "kNN ($k=500$)"),
+                           RMSE=c(lin.rmse, k12.rmse, k40.rmse, k500.rmse), row.names="Algorithm")
 
 library(xtable)
 Export <- function(table, file, caption) {
