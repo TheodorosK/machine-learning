@@ -24,7 +24,7 @@ University of Chicago Booth School of Business}
 
 The data set for this exercise the sale price and observed mileage for 1000 used cars. We can see in \cref{fig:linear} that the expected inverse relationship between mileage and sale price is borne out by the data (i.e. high-mileage cars are less expensive than low-mileage cars).
 
-\section{Linear Regression Model}
+\section{Linear Regression Model}\label{sec:linear}
 
 To describe this data, we first estimate a linear model of mileage on price:
 \[ p_i = \alpha + \beta m_i + \varepsilon_i \]
@@ -45,7 +45,7 @@ As an alternative to a linear model, we can use a k-nearest neighbors (knn) algo
 
 The decision we are faced with is choosing a value for the k-number of nearest neighbors to include in the algorithm. There are many different decision criteria we could use, but we will focus on two: 1) out-of-sample root mean square error (RMSE); and 2) n-fold cross-validation (CV).
 
-\subsection{Out-of-Sample RMSE}
+\subsection{Out-of-Sample RMSE}\label{sec:oos}
 
 To choose \(k\) using out-of-sample RMSE, we break our data into a training sample (with 900 data points) to train a model, and a test sample (with the remaining 100 points) to estimate the model's goodness of fit. We then estimate a model for all values of \(k \in (2,100)\) and compare their out-of-sample RMSEs, where RMSE is defined by:
 \[ \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \left( p_i - \hat{p_i} \right)^2} \]
@@ -53,7 +53,7 @@ To choose \(k\) using out-of-sample RMSE, we break our data into a training samp
 where \(p_i\) is the observed price of car \(i\) and \(\hat{p_i}\) is the predicted price of car \(i\) given its mileage. The RMSE is a measure of how closely a model fits the data; in this case, what we care about is how well the model fits data points that it has not been trained on. We then choose \(k\) that produces the lowest out-of-sample RMSE. The results are depicted in \cref{fig:sweep} (in the red line). We can see that the minimum RMSE occurs at \(k=12\), which is circled in the plot.\footnote{The value of \(k\) selected depends heavily on the hold-out sample, which is selected randomly. We set R's random number generator seed in this example, but letting it vary produces very different values of \(k\) fluctuating around the cross-validated \(k\) shown in next section.}
 
 % use n-fold cross-validation
-\subsection{n-fold Cross Validation}
+\subsection{n-fold Cross Validation}\label{sec:cv}
 
 The alternative method is to choose \(k\) via cross validation. In this method, we will measure out-of-sample fit in the same method as in the prior section (via RMSE), but we will average the out-of-sample fit of ten different training sets (i.e. n-fold cross-validation with \(n=10\)). The algorithm, briefly:
 \begin{itemize}
@@ -79,15 +79,24 @@ The resulting RMSE for various values of k is shown in \cref{fig:sweep} (the lig
   \label{fig:sweep}
 \end{figure}
 
+\section{Model Predictions}
+Before making any predictions it is worth comparing the linear model found in \cref{sec:linear} to the ones developed in \cref{sec:oos,sec:cv}.  See \cref{fig:models} for a visual comparison of how the different algorithms track the given cars data.  For completeness, the figure shows a relatively low value of $k$ (the one indicated in \cref{sec:oos}), one with $k=40$ (prescribed through our cross-validation method in \cref{sec:cv}), and finally one with $k=500$ (a arbitrary and unreasonably large choice).  Here the Bias-Variance tradeoff is clearly illustrated.  With small values of $k$, kNN tracks the data closely but also tracks the variance in the data-set.  As $k$ is increased to unreasonably large values it tends to ignore the variance, but introduces bias in the predictions.  Indeed, comparing the RMSEs of the algorithms shown (using the same training/test data) yields the following:
+
+\input{rmse_compare.tex}
+
+As expected, a reasonable choice of $k$ in the kNN algorithm does a good job tracking the car data.  The Bias-Variance trade-off is clearly illustrated 
+
+Smaller values of $k$ track the data more closely, but appear to also track what appears to be 
+
+% Predict car price with cross-validated knn and with linear model
+
 \begin{figure}[!htb]
   \centering
   \includegraphics[scale=.5]{pred_models.pdf}
-  \caption{}
+  \caption{Comparison of Models Create by the Linear and kNN}
   \label{fig:models}
 \end{figure}
 
-\section{Predictions}
-% Predict car price with cross-validated knn and with linear model
 
 \begin{figure}[!htb]
   \centering
