@@ -204,6 +204,33 @@ PlotSetup("predict")
 print(g)
 PlotDone()
 
+#
+# RMSE ----
+# This repeats a bunch of stuff, but I just wanted to be extra careful here.
+lin.model <- glm(price ~ mileage, data = cars.train)
+lin.pred <- predict(lin.model, data = cars.test)
+lin.rmse <- sqrt(mean((cars.test$price - lin.pred)^2))
+
+k12.pred <- kknn(price ~ mileage, train = cars.train, test = cars.test, k=12)
+k12.rmse <- sqrt(mean((cars.test$price - k12.pred$fitted.values)^2))
+
+k40.pred <- kknn(price ~ mileage, train = cars.train, test = cars.test, k=40)
+k40.rmse <- sqrt(mean((cars.test$price - k40.pred$fitted.values)^2))
+
+k400.pred <- kknn(price ~ mileage, train = cars.train, test = cars.test, k=400)
+k400.rmse <- sqrt(mean((cars.test$price - k400.pred$fitted.values)^2))
+
+rmse_compare <- data.frame(Algorithm=c("Linear", "kNN ($k=12$)", "kNN ($k=40$)", "kNN ($k=400$)"),
+                           RMSE=c(lin.rmse, k12.rmse, k40.rmse, k400.rmse), row.names="Algorithm")
+
+library(xtable)
+Export <- function(table, file, caption) {
+  print(xtable(table, label=paste('tab:', file, sep=''), caption=caption),
+        sanitize.text.function=function(x){x},
+        file=GetFilename(paste(file, '.tex', sep='')))
+}
+Export(rmse_compare, "rmse_compare", "Comparison of RMSEs")
+
 ##
 ## Error distribution ----
 ##
