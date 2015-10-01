@@ -12,7 +12,7 @@
 
 \begin{document}
 
-\title{Machine Learning () HW \#1}
+\title{Machine Learning (41204-01)\\HW \#1}
 \author{Will Clark \& Matthew DeLio \\
 University of Chicago Booth School of Business}
 \date{\today}
@@ -22,7 +22,7 @@ University of Chicago Booth School of Business}
 
 \section{Data Description}
 
-The data set for this exercise the sale price and observed mileage for 1000 used cars. We can see in \cref{fig:linear} that the expected inverse relationship between mileage and sale price is borne out by the data (i.e. high-mileage cars are less expensive than low-mileage cars).
+The data set for this exercise is the sale price and observed mileage for 1000 used cars of what appear to be the same make/model. We can see in \cref{fig:linear} that the expected inverse relationship between mileage and sale price is borne out by the data (i.e. high-mileage cars are less expensive than low-mileage cars).
 
 \section{Linear Regression Model}\label{sec:linear}
 
@@ -30,7 +30,7 @@ To describe this data, we first estimate a linear model of mileage on price:
 \[ p_i = \alpha + \beta m_i + \varepsilon_i \]
 where \(p_i\) is the price of car \(i\), \(m_i\) is the observed mileage on car \(i\), \(\alpha\) and \(\beta\) are estimated regression coefficients, and \(\varepsilon_i\) is the residual. We fit a generalized linear model to the data and find that \(\alpha=56359.7\) and \(\beta=-0.35\). That is, a hypothetical used car with no miles would sell for about \$56 thousand, and each additional mile driven lowers a car's expected selling price by \$0.35.
 
-As depicted in \cref{fig:linear}, this model appears to be a weak fit for the data. The distribution of residuals is not normally distributed. The model tends to systematically under-value cars with very low mileage and with very high mileage (see \cref{fig:lin_errors} in the Appendix). 
+As depicted in \cref{fig:linear}, this model appears to be a weak fit for the data (i.e. the residuals are not normally distributed). The model tends to systematically under-value cars with very low mileage and with very high mileage (see \cref{fig:lin_errors} in the Appendix). 
 
 \begin{figure}[!htb]
   \centering
@@ -41,16 +41,16 @@ As depicted in \cref{fig:linear}, this model appears to be a weak fit for the da
 
 \section{k-Nearest Neighbors Algorithm}
 
-As an alternative to a linear model, we can use a k-nearest neighbors (knn) algorithm. This algorithm will compute an expected price for every given mileage by taking an average of the observed price for the k-number of cars with the closest observed mileage. 
+As an alternative to a linear model, we consider the use of a k-nearest neighbors (kNN) algorithm. This algorithm computes an expected price for every given mileage by taking an average of the observed price for the k-number of cars with the closest observed mileage. 
 
 The decision we are faced with is choosing a value for the k-number of nearest neighbors to include in the algorithm. There are many different decision criteria we could use, but we will focus on two: 1) out-of-sample root mean square error (RMSE); and 2) n-fold cross-validation (CV).
 
 \subsection{Out-of-Sample RMSE}\label{sec:oos}
 
-To choose \(k\) using out-of-sample RMSE, we break our data into a training sample (with 900 data points) to train a model, and a test sample (with the remaining 100 points) to estimate the model's goodness of fit. We then estimate a model for all values of \(k \in (2,100)\) and compare their out-of-sample RMSEs, where RMSE is defined by:
+To choose $k$ using out-of-sample RMSE, we break our data into a training sample (with 900 data points) to train a model, and a test sample (with the remaining 100 points) to estimate the model's goodness of fit. We then estimate a model for all integer values of $k \in (2,100)$ and compare their out-of-sample RMSEs, where RMSE is defined by:
 \[ \text{RMSE} = \sqrt{\frac{1}{n} \sum_{i=1}^{n} \left( p_i - \hat{p_i} \right)^2} \]
 
-where \(p_i\) is the observed price of car \(i\) and \(\hat{p_i}\) is the predicted price of car \(i\) given its mileage. The RMSE is a measure of how closely a model fits the data; in this case, what we care about is how well the model fits data points that it has not been trained on. We then choose \(k\) that produces the lowest out-of-sample RMSE. The results are depicted in \cref{fig:sweep} (in the red line). We can see that the minimum RMSE occurs at \(k=12\), which is circled in the plot.\footnote{The value of \(k\) selected depends heavily on the hold-out sample, which is selected randomly. We set R's random number generator seed in this example, but letting it vary produces very different values of \(k\) fluctuating around the cross-validated \(k\) shown in next section.}
+where $p_i$ is the observed price of car $i$ and $\hat{p_i}$ is the predicted price of car $i$ given its mileage. The RMSE is a measure of how closely a model fits the data; in this case, what we care about is how well the model fits data points that it has not been trained on. We then choose the $k$ that produces the lowest out-of-sample RMSE. The results are depicted in \cref{fig:sweep} (in the red line). We can see that the minimum RMSE occurs at $k=12$, which is circled in the plot.\footnote{The value of \(k\) selected depends heavily on the hold-out sample, which is selected randomly. We set R's random number generator seed in this example, but letting it vary produces very different values of \(k\) fluctuating around the cross-validated \(k\) shown in next section.}
 
 % use n-fold cross-validation
 \subsection{n-fold Cross Validation}\label{sec:cv}
@@ -80,13 +80,7 @@ The resulting RMSE for various values of k is shown in \cref{fig:sweep} (the lig
 \end{figure}
 
 \section{Model Predictions}
-Before making any predictions it is worth comparing the linear model found in \cref{sec:linear} to the ones developed in \cref{sec:oos,sec:cv}.  See \cref{fig:models} for a visual comparison of how the different algorithms track the given cars data.  For completeness, the figure shows a relatively low value of $k$ (the one indicated in \cref{sec:oos}), one with $k=40$ (prescribed through our cross-validation method in \cref{sec:cv}), and finally one with $k=500$ (a arbitrary and unreasonably large choice).  Here the Bias-Variance tradeoff is clearly illustrated.  With small values of $k$ (e.g.; $k=12$), kNN tracks the data closely but also over-tracks tracks the variance.  As $k$ is increased to unreasonably large values it tends to ignore the variance and introduces a large amount of bias in the predictions (e.g.; $k=500$).  The sweet spot appears to be, at, roughly $k=40$; a point where the model still tracks the  data-set well, but does not amplify the variance.
-
-Indeed, the results can be seen in \cref{tab:rmse_compare} by examining the RMSE across all of these algorithms (using the same training/test sample as in \cref{sec:oos}).  Here it is evident that the RMSE is worse for the Linear and $k=500
-
-\input{rmse_compare.tex}
-
-% Predict car price with cross-validated knn and with linear model
+Before making any predictions we first compare the linear model found in \cref{sec:linear} to the ones developed in \cref{sec:oos,sec:cv}.  To make a visual comparison of the algorithms, we use \cref{fig:models} to see how they track the car pricing data.  In addition to the linear model, we show how the kNN algorithm tracks with a low value of $k=12$ (the one indicated in \cref{sec:oos}), a medium one at $k=40$ (prescribed through our cross-validation method in \cref{sec:cv}), and finally one with $k=500$ (a arbitrary and unreasonably large choice).  With these three value, the Bias-Variance trade-off is clearly illustrated.  For our small value of $k=12$, kNN tracks the data closely but also tends to latch onto variance in the data (seen as tracking jitter).  On the other side of the spectrum, as $k$ increases to an unreasonably large value of $k=500$ it tends to ignore the variance and introduces a large amount of bias (a smooth line that miss-predicts greatly at the tail).  Our prior work indicated that at $k=40$ we have achieve a good trade-off where the model still tracks the data-set well, but does not begin tracking too much of the variance.
 
 \begin{figure}[!htb]
   \centering
@@ -95,6 +89,15 @@ Indeed, the results can be seen in \cref{tab:rmse_compare} by examining the RMSE
   \label{fig:models}
 \end{figure}
 
+Furthermore, \cref{tab:rmse_compare} reveals a more quantitative comparison of the possible model choices\footnote{this comparison uses the same training/test sample used in \cref{sec:oos}}.  Here it is evident that the RMSE is worse for the Linear and $k=500$ cases.  Between $k=12$ and $k=40$ it appears as though the more complex model  at $k=12$ wins.  However, as pointed out in previous sections the 10-fold cross-validated value of $k=40$ likely yields a better parameter choice for further out-of-sample predictions and will be used for the remainder of this section.
+
+\input{rmse_compare.tex}
+
+We then use the linear model and kNN algorithm to predict the price of a car with 100,000 miles.  At this mileage, the linear model predicts that the car's value is \$21,362.33 while the kNN model predicts \$17,936.67 (these predictions are shown as colored circles in \cref{fig:predict}).  Examining this figure further, the mass of cars priced below \$20,000 with roughly 100,000 miles give us more confidence in kNN over the linear model.
+
+% > preds
+%   mileage linear.pred knn.pred
+% 1   1e+05    21362.33 17936.67
 
 \begin{figure}[!htb]
   \centering
