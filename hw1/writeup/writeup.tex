@@ -1,4 +1,4 @@
-\documentclass[11pt, fleqn, titlepage]{article}
+\documentclass[11pt, fleqn]{article}
 
 \input{../../utils/header.tex}
 
@@ -80,20 +80,18 @@ The resulting RMSE for various values of k is shown in \cref{fig:sweep} (the lig
 \end{figure}
 
 \section{Model Predictions}
-Before making any predictions it is worth comparing the linear model found in \cref{sec:linear} to the ones developed in \cref{sec:oos,sec:cv}.  See \cref{fig:models} for a visual comparison of how the different algorithms track the given cars data.  For completeness, the figure shows a relatively low value of $k$ (the one indicated in \cref{sec:oos}), one with $k=40$ (prescribed through our cross-validation method in \cref{sec:cv}), and finally one with $k=500$ (a arbitrary and unreasonably large choice).  Here the Bias-Variance tradeoff is clearly illustrated.  With small values of $k$, kNN tracks the data closely but also tracks the variance in the data-set.  As $k$ is increased to unreasonably large values it tends to ignore the variance, but introduces bias in the predictions.  Indeed, comparing the RMSEs of the algorithms shown (using the same training/test data) yields the following:
+Before making any predictions it is worth comparing the linear model found in \cref{sec:linear} to the ones developed in \cref{sec:oos,sec:cv}.  See \cref{fig:models} for a visual comparison of how the different algorithms track the given cars data.  For completeness, the figure shows a relatively low value of $k$ (the one indicated in \cref{sec:oos}), one with $k=40$ (prescribed through our cross-validation method in \cref{sec:cv}), and finally one with $k=500$ (a arbitrary and unreasonably large choice).  Here the Bias-Variance tradeoff is clearly illustrated.  With small values of $k$ (e.g.; $k=12$), kNN tracks the data closely but also over-tracks tracks the variance.  As $k$ is increased to unreasonably large values it tends to ignore the variance and introduces a large amount of bias in the predictions (e.g.; $k=500$).  The sweet spot appears to be, at, roughly $k=40$; a point where the model still tracks the  data-set well, but does not amplify the variance.
+
+Indeed, the results can be seen in \cref{tab:rmse_compare} by examining the RMSE across all of these algorithms (using the same training/test sample as in \cref{sec:oos}).  Here it is evident that the RMSE is worse for the Linear and $k=500
 
 \input{rmse_compare.tex}
-
-As expected, a reasonable choice of $k$ in the kNN algorithm does a good job tracking the car data.  The Bias-Variance trade-off is clearly illustrated 
-
-Smaller values of $k$ track the data more closely, but appear to also track what appears to be 
 
 % Predict car price with cross-validated knn and with linear model
 
 \begin{figure}[!htb]
   \centering
   \includegraphics[scale=.5]{pred_models.pdf}
-  \caption{Comparison of Models Create by the Linear and kNN}
+  \caption{Comparison of Models Created by the Linear and kNN}
   \label{fig:models}
 \end{figure}
 
@@ -105,6 +103,7 @@ Smaller values of $k$ track the data more closely, but appear to also track what
   \label{fig:predict}
 \end{figure}
 
+\clearpage
 \section{Appendix}
 
 \begin{figure}[!htb]
