@@ -117,7 +117,7 @@ out.me <- melt(out, id.vars = "nn")
 out.mins.me <- out.me %>% group_by(variable) %>% mutate(shape = min(value) == value)
 
 g <- ggplot(data=out.me, aes(x=nn, y=value, color=variable)) +
-  geom_line() + geom_point() + 
+  geom_line() + geom_point(size=1.1) + 
   scale_color_discrete("Method", labels=c("kNN (OOS - 10% holdout)", "kNN (10-fold CV)")) +
   labs(x="# of Nearest Neighbors", y="RMSE") +
   geom_point(data=out.mins.me, aes(shape=shape), size=5, na.rm = T, show_guide=F) +
