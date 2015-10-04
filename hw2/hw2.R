@@ -66,34 +66,40 @@ k.values <- c(seq(1, 13, 3),
               seq(14, 50, 1),
               seq(55, 140, 5),
               seq(160, 400, 20))
-nfolds <- 5
-kknn.cv.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
-kknn.cv.min.rmse = data.frame(
-  k = kknn.cv.rmse$k[ which.min(kknn.cv.rmse$total) ], 
-  rmse = kknn.cv.rmse$total[ which.min(kknn.cv.rmse$total) ])
+cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, 5, k.values)
+cv.1p.min.rmse = data.frame(
+  k = cv.1p.rmse$k[ which.min(cv.1p.rmse$total) ], 
+  rmse = cv.1p.rmse$total[ which.min(cv.1p.rmse$total) ])
 
 # Plot CV results ----
-plot.colors <- gg_color_hue(nfolds+1)
-kknn.cv.melt <- melt(kknn.cv.rmse, id.vars='k')
+plot_cv_rmse <- function(rmse, min.rmse, nfolds) {
+  plot.colors <- gg_color_hue(nfolds+1)
+  rmse.melt <- melt(rmse, id.vars='k')
+  
+  min.rmse$label <- sprintf("Minimum @ k=%d", min.rmse$k)
+  
+  g <- ggplot() +
+    # Plots RMSEs for each K
+    geom_point(data=rmse.melt, aes(k, value, color=variable)) +
+    geom_line(data=rmse.melt, aes(k, value, color=variable), size=1.25) +
+    scale_color_manual(
+      name = "Run",
+      values=c(plot.colors[1], alpha(plot.colors[2:(nfolds+1)], 0.15)),
+      labels = c("Combined", sprintf("Fold #%d", 1:nfolds))) +
+    # Show the mins
+    geom_point(data = min.rmse, aes(x=k, y=rmse), 
+               pch=21, size=4, color=plot.colors[1]) +
+    geom_text(data = min.rmse, hjust=0, vjust=0,
+              aes(x=k, y=rmse, label=label)) +
+    # Misc cleanup/labels
+    labs(x="k", y="RMSE")
+  return(g)
+}
 
-g <- ggplot() +
-  # Plots RMSEs for each K
-  geom_point(data=kknn.cv.melt, aes(k, value, color=variable)) +
-  geom_line(data=kknn.cv.melt, aes(k, value, color=variable), size=1.25) +
-  scale_color_manual(
-    name = "Run",
-    values=c(plot.colors[1], alpha(plot.colors[2:(nfolds+1)], 0.15)),
-    labels = c("Combined", sprintf("Fold #%d", 1:nfolds))) +
-  # Show the mins
-  geom_point(data = kknn.cv.min.rmse, aes(x=k, y=rmse), 
-             pch=21, size=4, color=plot.colors[1]) +
-  geom_text(data = kknn.cv.min.rmse, hjust=0, vjust=0,
-            aes(x=k, y=rmse, label=sprintf("Minimum @ k=%d", kknn.cv.min.rmse$k))) +
-  # Misc cleanup/labels
-  labs(x="k", y="RMSE") + theme_bw() + theme(legend.position = c(0.8, 0.75)) +
+PlotSetup("1p_cv_k")
+g <- plot_cv_rmse(cv.1p.rmse, cv.1p.min.rmse, 5) + 
+  theme_bw() + theme(legend.position=c(0.8, 0.75)) +
   scale_x_continuous(expand=c(0.01, 0))
-
-PlotSetup("min_k_cv")
 plot(g)
 PlotDone()
 
@@ -105,24 +111,102 @@ fittedK <- function(frm, k, data) {
                     price_hat = kn$fitted.values))
 }
 
-kknn.eye.k <- 40
-kknn.eye.fit <- fittedK(price ~ mileage, kknn.eye.k, dat)
-kknn.cv.fit <- fittedK(price ~ mileage, kknn.cv.min.rmse$k, dat)
+eye.1p.k <- 40
+eye.1p.fit <- fittedK(price ~ mileage, eye.1p.k, dat)
+cv.1p.fit <- fittedK(price ~ mileage, cv.1p.min.rmse$k, dat)
 
-kknn.price_hat.melt <- melt(data.frame(mileage = kknn.eye.fit$mileage, 
-                                       eye = kknn.eye.fit$price_hat,
-                                       cv = kknn.cv.fit$price_hat), 
+kknn.price_hat.melt <- melt(data.frame(mileage = eye.1p.fit$mileage, 
+                                       eye = eye.1p.fit$price_hat,
+                                       cv = cv.1p.fit$price_hat), 
                             id.vars="mileage", value.name = "price")
 
 g <- ggplot() + geom_point(data=dat, aes(x=mileage/1000, y=price/1000), alpha=0.20) +
   geom_line(data = kknn.price_hat.melt, size=1, alpha=0.8, 
             aes(x=mileage/1000, y=price/1000, color=variable)) +
   scale_color_discrete(name="Method", 
-                       labels = c(sprintf("Eyeball (k=%d)", kknn.eye.k),
-                                  sprintf("CV (k=%d)", kknn.cv.min.rmse$k))) +
+                       labels = c(sprintf("Eyeball (k=%d)", eye.1p.k),
+                                  sprintf("CV (k=%d)", cv.1p.min.rmse$k))) +
   theme_bw() + theme(legend.position = c(0.8, 0.75)) +
   labs(x="Mileage [1000 miles]", y="Price [1000 $]") +
   scale_x_continuous(expand=c(0,0)) + scale_y_continuous(expand=c(0,0))
-PlotSetup("fit_eye_cv")
+PlotSetup("1p_fit_eye_ev")
+plot(g)
+PlotDone()
+
+# Scale Data ----
+IntelliScaleSetup <- function(data, exclude = c()) {
+  scale.info <- data.frame(
+    column = colnames(data),
+    scaled = rep_len(NA, ncol(data)),
+    mean = rep_len(NA, ncol(data)),
+    sd = rep_len(NA, ncol(data)))
+  
+  for (c in 1:ncol(data)) {
+    if (colnames(data)[c] %in% exclude) {
+      scale.info[c, "scaled"] = F
+    } else {
+      scale.info[c,"scaled"] = !is.factor(data[,c])
+    }
+  }
+  
+  scale.info[scale.info$scaled, "mean"] <- apply(data[,scale.info$scaled], 2, mean)
+  scale.info[scale.info$scaled, "sd"] <- apply(data[,scale.info$scaled], 2, sd)
+  return(scale.info)
+}
+
+IntelliScale <- function(data, scale.info) {
+  scaled <- data  
+  for (c in 1:ncol(scaled)) {
+    scale.info.idx <- which(scale.info$column %in% colnames(scaled)[c])
+    if (length(scale.info.idx) == 0) {
+      next
+    } else if (!scale.info[scale.info.idx, "scaled"]) {
+      next
+    }
+    
+    scaled[,c] <- (scaled[,c] - scale.info[scale.info.idx, "mean"]) /
+      scale.info[scale.info.idx, "sd"]
+  }
+  return(scaled)
+}
+dat.scale.info <- IntelliScaleSetup(dat, c("price"))
+dat.scale <- IntelliScale(dat, dat.scale.info)
+
+# Double-check the scaled values
+apply(dat.scale[,dat.scale.info$scaled], 2, mean)
+apply(dat.scale[,dat.scale.info$scaled], 2, sd)
+colMeans(dat.scale[,c("mileage", "price", "year")])
+
+# Fit P=2 kknn ----
+cv.2p.rmse <- RunKKNNCV(price ~ mileage + year, dat.scale, 5, k.values)
+
+cv.2p.min.rmse = data.frame(
+  k = cv.2p.rmse$k[ which.min(cv.2p.rmse$total) ], 
+  rmse = cv.2p.rmse$total[ which.min(cv.2p.rmse$total) ])
+
+# P=2 Plot RMSE ----
+g <- plot_cv_rmse(cv.2p.rmse, cv.2p.min.rmse, 5) +
+  theme_bw() + theme(legend.position=c(0.9, 0.25)) +
+  scale_x_continuous(expand=c(0.01, 0))
+
+PlotSetup("2p_cv_k")
+plot(g)
+PlotDone()
+
+# P=2 Compare ----
+cv.1p.2p.compare <- data.frame(
+  "k" = cv.1p.rmse$k,
+  "mileage" = cv.1p.rmse$total,
+  "mileage+year" = cv.2p.rmse$total)
+cv.1p.2p.compare.melt <- melt(cv.1p.2p.compare, id.vars="k")
+g <- ggplot() + 
+  geom_point(data=cv.1p.2p.compare.melt, aes(x=k, y=value, color=variable)) +
+  geom_line(data=cv.1p.2p.compare.melt, aes(x=k, y=value, color=variable)) +
+  scale_color_discrete("Training Attributes", 
+                       labels=c("Mileage", "Mileage & Year")) +
+  theme_bw() + theme(legend.position=c(0.85, 0.15)) +
+  labs(x="k", y="RMSE")
+
+PlotSetup("1p_2p_cv_compare")
 plot(g)
 PlotDone()
