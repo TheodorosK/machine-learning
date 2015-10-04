@@ -54,24 +54,37 @@ RunKKNNCV <- function(frm, data, nfolds, k.values) {
   return(rmse)
 }
 
-k.values <- c(seq(1, 60, 1),
-              seq(65, 100, 5),
-              seq(120, 400, 20))
+k.values <- c(seq(1, 21, 3),
+              seq(22, 65, 1),
+              seq(65, 140, 5),
+              seq(160, 400, 20))
 nfolds <- 5
-rmse.cv <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
+kknn.cv.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
+kknn.min.rmse = data.frame(
+  k = kknn.cv.rmse$k[ which.min(kknn.cv.rmse$total) ], 
+  rmse = kknn.cv.rmse$total[ which.min(kknn.cv.rmse$total) ])
 
 # Plot CV results ----
 plot.colors <- gg_color_hue(nfolds+1)
-min.dat = data.frame(k = rmse.cv$k[which.min(rmse.cv$total)], 
-                     rmse = rmse.cv$total[which.min(rmse.cv$total)])
+kknn.cv.melt <- melt(kknn.cv.rmse, id.vars='k')
 
 g <- ggplot() +
-  geom_line(data=melt(rmse.cv, id.vars='k'), aes(k, value, color=variable), size=1) +
-  scale_color_manual(name="Run",
-                     values=c(plot.colors[1], alpha(plot.colors[2:(nfolds+1)], 0.3)),
-                     labels = c("Total", sprintf("Fold #%d", 1:nfolds))) +
-  geom_point(data = min.dat, aes(x=k, y=rmse), pch=21, size=4, color=plot.colors[1]) +
-  geom_text(data = min.dat, hjust=0, vjust=0,
-            aes(x=k, y=rmse, label=sprintf("Minimum @ k=%d", min.dat$k))) +
-  labs(x="k", y="RMSE") + theme_bw()
+  # Plots RMSEs for each K
+  geom_point(data=kknn.cv.melt, aes(k, value, color=variable)) +
+  geom_line(data=kknn.cv.melt, aes(k, value, color=variable), size=1.25) +
+  scale_color_manual(
+    name="Run",
+    values=c(plot.colors[1], alpha(plot.colors[2:(nfolds+1)], 0.15)),
+    labels = c("Combined", sprintf("Fold #%d", 1:nfolds))) +
+  # Show the mins
+  geom_point(data = kknn.min.rmse, aes(x=k, y=rmse), 
+             pch=21, size=4, color=plot.colors[1]) +
+  geom_text(data = kknn.min.rmse, hjust=0, vjust=0,
+            aes(x=k, y=rmse, label=sprintf("Minimum @ k=%d", kknn.min.rmse$k))) +
+  # Misc cleanup/labels
+  labs(x="k", y="RMSE") + theme_bw() + theme(legend.position = c(0.8, 0.75)) +
+  scale_x_continuous(expand=c(0.01, 0))
+
+PlotSetup("knn_cv_min_k")
 plot(g)
+PlotDone()
