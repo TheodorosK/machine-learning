@@ -230,7 +230,7 @@ predict.1p$price_hat <- kknn(
   price ~ mileage, train=dat, test=predict.1p, 
   k=cv.1p.min.rmse$k, kernel='rectangular')$fitted.value
 
-ExportTable(predict.1p, "1p_predict", "Predicted Value with 1 Attribute", 
+ExportTable(predict.1p, "1p_predict", "Predicted Price with 1 Attribute", 
             c("Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'f'))
 
 predict.2p = data.frame(year=2008, mileage=75e3)
@@ -239,5 +239,5 @@ predict.2p$price_hat <- kknn(
   test=IntelliScale(predict.2p, dat.scale.info), 
   k=cv.2p.min.rmse$k, kernel='rectangular')$fitted.value
 
-ExportTable(predict.2p, "2p_predict", "Predicted Values with 2 Attributes",
+ExportTable(predict.2p, "2p_predict", "Predicted Price with 2 Attributes",
             c("Year", "Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'd', 'f'))
