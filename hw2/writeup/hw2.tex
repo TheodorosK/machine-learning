@@ -19,38 +19,44 @@ University of Chicago Booth School of Business}
 \date{\today}
 \maketitle
 
-% \begin{figure}[!htb]
-%   \centering
-%   \includegraphics[scale=.5]{.pdf}
-%   \caption{}
-%   \label{fig:}
-% \end{figure}
+\section{kNN with 1 Attribute}
 
-% \begin{figure}[!htb]
-%   \centering
-%   \includegraphics[scale=.5]{.pdf}
-%   \caption{}
-%   \label{fig:}
-% \end{figure}
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{1p_cv_k.pdf}
+  \caption{5-fold kNN CV for 1 Attribute}
+  \label{fig:1p_k}
+\end{figure}
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{1p_fit_eye_ev.pdf}
+  \caption{Comparison of Fit Between ``Eyeball'' and CV Chosen $k$'s}
+  \label{fig:1p_fit}
+\end{figure}
+
+\subsection{Price Predictions}
 \input{1p_predict.tex}
 
-% \begin{figure}[!htb]
-%   \centering
-%   \includegraphics[scale=.5]{.pdf}
-%   \caption{}
-%   \label{fig:}
-% \end{figure}
+\section{kNN with 2 Attributes}
 
-% \begin{figure}[!htb]
-%   \centering
-%   \includegraphics[scale=.5]{.pdf}
-%   \caption{}
-%   \label{fig:}
-% \end{figure}
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{2p_cv_k.pdf}
+  \caption{5-fold kNN CV for 2 Attributes}
+  \label{fig:2p_k}
+\end{figure}
 
+\subsection{Price Predictions}
 \input{2p_predict.tex}
 
+\section{RMSE Comparison of kNN for 1 \& 2 Attributes}
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{1p_2p_cv_compare.pdf}
+  \caption{RMSE for 1 \& 2 Attributes}
+  \label{fig:p_compare}
+\end{figure}
 
 \end{document}
 
