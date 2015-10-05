@@ -4,7 +4,7 @@
 rm(list = ls())
 
 source('../utils/source_me.R', chdir = T)
-CreateDefaultPlotOpts(WriteToFile = F)
+CreateDefaultPlotOpts(WriteToFile = T)
 
 library(cvTools)
 library(kknn)
@@ -14,6 +14,13 @@ library(scales)
 
 set.seed(926)
 dat <- read.csv(file="../data/susedcars.csv", header = T)
+
+# Set CV parameters
+nfolds <- 5
+k.values <- c(seq(1, 13, 3),
+              seq(14, 50, 1),
+              seq(55, 140, 5),
+              seq(160, 300, 20))
 
 # N-Fold CV ----
 RunKKNNCV <- function(frm, data, nfolds, k.values) {
@@ -62,11 +69,7 @@ RunKKNNCV <- function(frm, data, nfolds, k.values) {
   return(rmse)
 }
 
-k.values <- c(seq(1, 13, 3),
-              seq(14, 50, 1),
-              seq(55, 140, 5),
-              seq(160, 400, 20))
-cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, 5, k.values)
+cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
 cv.1p.min.rmse = data.frame(
   k = cv.1p.rmse$k[ which.min(cv.1p.rmse$total) ], 
   rmse = cv.1p.rmse$total[ which.min(cv.1p.rmse$total) ])
@@ -97,7 +100,7 @@ plot_cv_rmse <- function(rmse, min.rmse, nfolds) {
 }
 
 PlotSetup("1p_cv_k")
-g <- plot_cv_rmse(cv.1p.rmse, cv.1p.min.rmse, 5) + 
+g <- plot_cv_rmse(cv.1p.rmse, cv.1p.min.rmse, nfolds) + 
   theme_bw() + theme(legend.position=c(0.8, 0.75)) +
   scale_x_continuous(expand=c(0.01, 0))
 plot(g)
@@ -169,7 +172,7 @@ IntelliScale <- function(data, scale.info) {
   }
   return(scaled)
 }
-dat.scale.info <- IntelliScaleSetup(dat, c("price"))
+dat.scale.info <- IntelliScaleSetup(dat, exclude=c("price"))
 dat.scale <- IntelliScale(dat, dat.scale.info)
 
 # Double-check the scaled values
@@ -177,15 +180,15 @@ apply(dat.scale[,dat.scale.info$scaled], 2, mean)
 apply(dat.scale[,dat.scale.info$scaled], 2, sd)
 colMeans(dat.scale[,c("mileage", "price", "year")])
 
-# Fit P=2 kknn ----
-cv.2p.rmse <- RunKKNNCV(price ~ mileage + year, dat.scale, 5, k.values)
+# 2p cv knn ----
+cv.2p.rmse <- RunKKNNCV(price ~ mileage + year, dat.scale, nfolds, k.values)
 
 cv.2p.min.rmse = data.frame(
   k = cv.2p.rmse$k[ which.min(cv.2p.rmse$total) ], 
   rmse = cv.2p.rmse$total[ which.min(cv.2p.rmse$total) ])
 
-# P=2 Plot RMSE ----
-g <- plot_cv_rmse(cv.2p.rmse, cv.2p.min.rmse, 5) +
+# 2p Plot RMSE ----
+g <- plot_cv_rmse(cv.2p.rmse, cv.2p.min.rmse, nfolds) +
   theme_bw() + theme(legend.position=c(0.9, 0.25)) +
   scale_x_continuous(expand=c(0.01, 0))
 
@@ -193,20 +196,48 @@ PlotSetup("2p_cv_k")
 plot(g)
 PlotDone()
 
-# P=2 Compare ----
+# 2p Compare ----
 cv.1p.2p.compare <- data.frame(
   "k" = cv.1p.rmse$k,
   "mileage" = cv.1p.rmse$total,
   "mileage+year" = cv.2p.rmse$total)
+
+cv.1p.2p.rmse.min <- cbind(rbind(cv.1p.min.rmse, cv.2p.min.rmse))
+cv.1p.2p.rmse.min$label = sprintf("Minimum @ k=%d", cv.1p.2p.rmse.min$k)
+cv.1p.2p.rmse.min.melt <- melt(cv.1p.2p.rmse.min, id.vars=c("k", "label"))
+
 cv.1p.2p.compare.melt <- melt(cv.1p.2p.compare, id.vars="k")
 g <- ggplot() + 
   geom_point(data=cv.1p.2p.compare.melt, aes(x=k, y=value, color=variable)) +
   geom_line(data=cv.1p.2p.compare.melt, aes(x=k, y=value, color=variable)) +
-  scale_color_discrete("Training Attributes", 
+  scale_color_discrete("Attributes", 
                        labels=c("Mileage", "Mileage & Year")) +
-  theme_bw() + theme(legend.position=c(0.85, 0.15)) +
+  geom_point(data=cv.1p.2p.rmse.min.melt, size=5, pch=21, show_guide=F,
+             aes(x=k, y=value)) +
+  geom_text(data=cv.1p.2p.rmse.min.melt, 
+            aes(x=k, y=value, hjust=0, vjust=0,
+                label=sprintf("Minimum @ k=%d", cv.1p.2p.rmse.min.melt$k))) +
+  theme_bw() + theme(legend.position=c(0.85, 0.85)) +
   labs(x="k", y="RMSE")
 
 PlotSetup("1p_2p_cv_compare")
 plot(g)
 PlotDone()
+
+# Predictions ----
+predict.1p = data.frame(mileage=100e3)
+predict.1p$price_hat <- kknn(
+  price ~ mileage, train=dat, test=predict.1p, 
+  k=cv.1p.min.rmse$k, kernel='rectangular')$fitted.value
+
+ExportTable(predict.1p, "1p_predict", "Predicted Value with 1 Attribute", 
+            c("Mileage", "$\\hat(price)$"), display=c('d', 'd', 'f'))
+
+predict.2p = data.frame(year=2008, mileage=75e3)
+predict.2p$price_hat <- kknn(
+  price ~ mileage + year, train=dat.scale, 
+  test=IntelliScale(predict.2p, dat.scale.info), 
+  k=cv.2p.min.rmse$k, kernel='rectangular')$fitted.value
+
+ExportTable(predict.2p, "2p_predict", "Predicted Values with 2 Attributes",
+            c("Year", "Mileage", "$\\hat(price)$"), display=c('d', 'd', 'd', 'f'))

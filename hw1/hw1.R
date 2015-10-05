@@ -223,13 +223,7 @@ k500.rmse <- sqrt(mean((cars.test$price - k500.pred$fitted.values)^2))
 rmse_compare <- data.frame(Algorithm=c("Linear", "kNN ($k=12$)", "kNN ($k=40$)", "kNN ($k=500$)"),
                            RMSE=c(lin.rmse, k12.rmse, k40.rmse, k500.rmse), row.names="Algorithm")
 
-library(xtable)
-Export <- function(table, file, caption) {
-  print(xtable(table, label=paste('tab:', file, sep=''), caption=caption),
-        sanitize.text.function=function(x){x},
-        file=GetFilename(paste(file, '.tex', sep='')))
-}
-Export(rmse_compare, "rmse_compare", "Comparison of RMSEs")
+ExportTable(rmse_compare, "rmse_compare", "Comparison of RMSEs")
 
 ##
 ## Error distribution ----

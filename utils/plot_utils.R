@@ -20,7 +20,7 @@
 
 # Appends the arguments to the prefix, also creates an output directory (recursively)
 # from the current working directory.
-GetFilename <- function(filename, plotOpts. = plotOpts) {
+GetFilename <- function(filename, plotOpts. = Global.PlotOpts) {
   dir.create(path = plotOpts.$Prefix,
              showWarnings = F, recursive = T)
   return(paste(plotOpts.$Prefix, filename, sep = ''))
