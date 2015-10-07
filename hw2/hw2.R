@@ -87,10 +87,10 @@ cv.1p.min.rmse = data.frame(
 
 VarianceKKNN <- function(T, nfolds) {
   ncores <- detectCores()
-  nfolds <- 5
-  clust <- makeCluster(ncores, type = "FORK")
+  clust <- makeCluster(ncores, type = "FORK", outfile = "status.txt")
   seeds <- sample(1:1000, size = T)
   min.k <- parSapply(cl = clust, X = 1:T, FUN = function(t) {
+    cat(sprintf("\n\n\n * * * * * * * * %d * * * * * * * * \n\n\n", t))
     set.seed(seeds[t])
     cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
     return(cv.1p.rmse$k[which.min(cv.1p.rmse$total)])
@@ -103,18 +103,18 @@ kseq.5 <- VarianceKKNN(T = 100, nfolds = 5)
 kseq.10 <- VarianceKKNN(T = 100, nfolds = 10)
 kseq.20 <- VarianceKKNN(T = 100, nfolds = 20)
 
-# T <- 10
-# min.k <- rep(NA, T)
-# nfolds <- 5
-# for (t in 1:T) {
-#   cat(sprintf("T = %d -------------------------------------------------\n", t))
-#   cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
-#   cv.1p.min.rmse = data.frame(
-#     k = cv.1p.rmse$k[ which.min(cv.1p.rmse$total) ], 
-#     rmse = cv.1p.rmse$total[ which.min(cv.1p.rmse$total) ])  
-#   min.k[t] <- cv.1p.min.rmse$k
-# }
-# cat("done\n")
+kseq <- cbind(kseq.5, kseq.10, kseq.20)
+names(kseq) <- c("nfold5", "nfold10", "nfold20")
+
+# Plot variation of k's
+kseq.melt <- melt(data = kseq, value.name = "k")
+names(kseq.melt)[1:2] <- c("Index", "nFolds")
+
+# g <- ggplot(kseq.melt, aes(x = Index, y = k, color = nFolds)) + geom_point()
+# print(g)
+
+g <- ggplot(kseq.melt, aes(nFolds, k)) + geom_boxplot()
+print(g)
 
 # Plot CV results ----
 plot_cv_rmse <- function(rmse, min.rmse, nfolds) {
