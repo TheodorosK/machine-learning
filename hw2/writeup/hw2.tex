@@ -21,6 +21,16 @@ University of Chicago Booth School of Business}
 
 \section{kNN with 1 Attribute}
 
+In the previous assignment, we chose a k-nearest neighbors algorithm with a value of $k=40$. In this exercise, we will use 5-fold cross validation to chose $k$ in a more systematic manner. In \cref{fig:1p_k}, we show the average root mean square error (RMSE) for each of five folds over values of $k \in (2,300)$. The thick red line shows the average RMSE for each run with the minimum value highlighted at $k=28$. 
+
+Because the training and test samples are being chosen randomly and because the number of folds is small, there is some run-to-run variation in the minimum $k$ selected with this method. To account for this, we can repeat 5-fold cross validation. Each trail will yield an optimal value of $k$, and we can look at the mean of this sequence of optimal $k$ values to determine the most optimal $k$ value.
+
+We can see the effect of the number of folds on the \textit{distribution} of optimal $k$ values in \cref{fig:nfolds_k_dist}. We run 100 trials of cross validation for 5, 10, and 20 folds and show the distribution of optimal $k$ values as box plots. We can see that for 5-fold cross validation, the spread of optimal $k$ values is fairly high (as is the presence of outliers), but that the spread falls as the number of folds rises. 
+
+As it turns out, the mean optimal $k$ chosen over 100 trials of 5-fold cross validation is $k=27$, so our value of $k$ chosen over 1 run above is close to optimal. For the duration of the exercise we will use $k=28$ since the difference between the two model fits is negligible.
+
+The difference between our ``eyeballed'' value of $k$ and the optimal value of $k$ discussed above is shown in \cref{fig:1p_fit}. The difference between the two is very small; the eyeballed value of $k=40$ provides a slightly smoother fit of the data, but by and large there is an insignificant difference between the fits.
+
 \begin{figure}[!htb]
   \centering
   \includegraphics[scale=.5]{1p_cv_k.pdf}
@@ -36,9 +46,14 @@ University of Chicago Booth School of Business}
 \end{figure}
 
 \subsection{Price Predictions}
+
+Using the value of $k=28$ discussed above, our prediction for the price of a car with 100 thousand miles is \$16,676.18 (see \cref{tab:1p_predict}). We can see the predicted point in \cref{fig_1p_fit_eye} outlined in black; it appears that the predicted value is well within the range of observed values for similar cars.
+
 \input{1p_predict.tex}
 
 \section{kNN with 2 Attributes}
+
+In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first 
 
 \begin{figure}[!htb]
   \centering
