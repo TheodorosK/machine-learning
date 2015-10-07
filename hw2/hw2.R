@@ -11,6 +11,8 @@ library(kknn)
 library(ggplot2)
 library(reshape2)
 library(scales)
+library(parallel)
+library(tictoc)
 
 set.seed(926)
 dat <- read.csv(file="../data/susedcars.csv", header = T)
@@ -73,6 +75,46 @@ cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
 cv.1p.min.rmse = data.frame(
   k = cv.1p.rmse$k[ which.min(cv.1p.rmse$total) ], 
   rmse = cv.1p.rmse$total[ which.min(cv.1p.rmse$total) ])
+
+# See how much run-to-run variation there is ----
+
+# From the parallel docs:
+# https://stat.ethz.ch/R-manual/R-devel/library/parallel/doc/parallel.pdf
+# The alternative is to set separate seeds for each worker process in some 
+# reproducible way from the seed in the master process. This is generally 
+# plenty safe enough, but there have been worries that the random-number 
+# streams in the workers might somehow get into step.
+
+VarianceKKNN <- function(T, nfolds) {
+  ncores <- detectCores()
+  nfolds <- 5
+  clust <- makeCluster(ncores, type = "FORK")
+  seeds <- sample(1:1000, size = T)
+  min.k <- parSapply(cl = clust, X = 1:T, FUN = function(t) {
+    set.seed(seeds[t])
+    cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
+    return(cv.1p.rmse$k[which.min(cv.1p.rmse$total)])
+  })
+  stopCluster(clust)  
+  return(min.k)
+}
+
+kseq.5 <- VarianceKKNN(T = 100, nfolds = 5)
+kseq.10 <- VarianceKKNN(T = 100, nfolds = 10)
+kseq.20 <- VarianceKKNN(T = 100, nfolds = 20)
+
+# T <- 10
+# min.k <- rep(NA, T)
+# nfolds <- 5
+# for (t in 1:T) {
+#   cat(sprintf("T = %d -------------------------------------------------\n", t))
+#   cv.1p.rmse <- RunKKNNCV(price ~ mileage, dat, nfolds, k.values)
+#   cv.1p.min.rmse = data.frame(
+#     k = cv.1p.rmse$k[ which.min(cv.1p.rmse$total) ], 
+#     rmse = cv.1p.rmse$total[ which.min(cv.1p.rmse$total) ])  
+#   min.k[t] <- cv.1p.min.rmse$k
+# }
+# cat("done\n")
 
 # Plot CV results ----
 plot_cv_rmse <- function(rmse, min.rmse, nfolds) {
