@@ -318,3 +318,12 @@ predict.2p$price_hat <- kknn(
 ExportTable(predict.2p, "2p_predict", "Predicted Price with 2 Attributes",
             c("Year", "Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'd', 'f'),
             include.rownames=F)
+
+# Exports ----
+ExportTable(dat[sample(nrow(dat), 5),], "head_dat",
+            "First Few Samples of the Dataset",
+            digits=c(0, 0, 0, 0, 0, 0, 0, 0), include.rownames=F)
+
+ExportTable(dat.scale.info[c(4,5), c(1,3,4)], "data_scale",
+            "Basic Dataset Statistics", 
+            digits=c(0,0,1,1), include.rownames=F)
