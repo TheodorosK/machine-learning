@@ -238,6 +238,39 @@ PlotSetup("2p_cv_k")
 plot(g)
 PlotDone()
 
+# 2p cv knn - multirun ----
+nruns <- 10
+RunMultiKKNNCV <- function(frm, data, nfolds, nruns, k.values) {
+  ncores <- detectCores()
+  clust <- makeCluster(ncores, type = "FORK")
+  seeds <- sample(1:nruns*100, size = nruns)
+  rmse.multi <- parSapply(cl = clust, X = 1:nruns, FUN = function(t) {
+    set.seed(seeds[t])
+    return(RunKKNNCV(frm, data, nfolds, k.values)$total)
+  })
+  stopCluster(clust)
+  return(data.frame(k=k.values,
+                    mean=rowMeans(rmse.multi),
+                    run=rmse.multi))
+}
+cv.2p.rmse.multi <- RunMultiKKNNCV(price ~ mileage + year, dat.scale, nfolds, nruns, 
+                                   c(seq(10,40,1), seq(45,100,5)))
+
+# Plot 2p cv knn - multirun ----
+cv.2p.rmse.multi.melt = melt(cv.2p.rmse.multi, id.vars="k")
+plot.colors = gg_color_hue(nruns+1)
+g <- ggplot(data=cv.2p.rmse.multi.melt) + 
+  geom_point(aes(x=k, y=value, color=variable)) + 
+  geom_line(aes(x=k, y=value, color=variable)) +
+  scale_color_manual(
+    name = "Run",
+    values=c(plot.colors[1], alpha(plot.colors[2:(nruns+1)], 0.15)),
+    labels = c("Mean", sprintf("Run #%d", 1:nruns))) +
+  theme_bw() + labs(y="RMSE")
+PlotSetup("2p_cv_multi_k")
+plot(g)
+PlotDone()
+
 # 2p Compare ----
 cv.1p.2p.compare <- data.frame(
   "k" = cv.1p.rmse$k,
@@ -273,7 +306,8 @@ predict.1p$price_hat <- kknn(
   k=cv.1p.min.rmse$k, kernel='rectangular')$fitted.value
 
 ExportTable(predict.1p, "1p_predict", "Predicted Price with 1 Attribute", 
-            c("Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'f'))
+            c("Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'f'), 
+            include.rownames=F)
 
 predict.2p = data.frame(year=2008, mileage=75e3)
 predict.2p$price_hat <- kknn(
@@ -282,4 +316,5 @@ predict.2p$price_hat <- kknn(
   k=cv.2p.min.rmse$k, kernel='rectangular')$fitted.value
 
 ExportTable(predict.2p, "2p_predict", "Predicted Price with 2 Attributes",
-            c("Year", "Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'd', 'f'))
+            c("Year", "Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'd', 'f'),
+            include.rownames=F)
