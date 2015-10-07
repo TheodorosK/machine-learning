@@ -60,9 +60,16 @@ Using the value of $k=28$ discussed above, our prediction for the price of a car
 
 \section{kNN with 2 Attributes}
 
-In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first examined the data-set and noted that the two attributes of interest, mileage and year are on completely different scales
+In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first examine the data-set and note that the two attributes used to predict price are on seemingly different scales.  In \cref{tab:data_scale} we see that the means are completely different and the standard deviations are also different. To avoid over-weighting one parameter with the other during model selection and prediction, these two attributes are independently scaled to ensure that $\mu_i=1$ and $\sigma_i^2=1$ using \cref{eq:scale}.  These scaled values are then used as inputs when training kNN.  When predicting prices, the inputs are scaled using the exact same parameters.
 
-\input{head_dat.tex}
+\begin{equation}\label{eq:scale}
+x_{i,scaled} = \frac{x_i-\mu_i}{\sigma_i} 
+\end{equation}
+
+These scaled values are input to kNN and used to predict price.
+
+% \input{head_dat.tex}
+\input{data_scale.tex}
 
 \begin{figure}[!htb]
   \centering
@@ -97,14 +104,14 @@ In this section we explore the benefits of introducing a second attribute to our
 % \begin{figure}
 %   \centering
 %   \begin{subfigure}[b]{0.49\textwidth}
-%     \includegraphics[width=\textwidth]{.pdf}
 %     \caption{}
+%     \includegraphics[width=\textwidth]{.pdf}
 %     \label{fig:}
 %   \end{subfigure}
 %   \hfill
 %   \begin{subfigure}[b]{0.49\textwidth}
-%     \includegraphics[width=\textwidth]{.pdf}
 %     \caption{}
+%     \includegraphics[width=\textwidth]{.pdf}
 %     \label{fig:}
 %   \end{subfigure}
 %   \caption{}
@@ -112,8 +119,8 @@ In this section we explore the benefits of introducing a second attribute to our
 
 % \begin{figure}[!htb]
 %   \centering
-%   \includegraphics[scale=.5]{.pdf}
 %   \caption{}
+%   \includegraphics[scale=.5]{.pdf}
 %   \label{fig:}
 % \end{figure}
 
