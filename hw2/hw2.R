@@ -253,8 +253,10 @@ RunMultiKKNNCV <- function(frm, data, nfolds, nruns, k.values) {
                     mean=rowMeans(rmse.multi),
                     run=rmse.multi))
 }
-cv.2p.rmse.multi <- RunMultiKKNNCV(price ~ mileage + year, dat.scale, nfolds, nruns, 
-                                   c(seq(10,40,1), seq(45,100,5)))
+cv.2p.rmse.multi <- LoadCachedOrRun(
+  RunMultiKKNNCV, 
+  price ~ mileage + year, dat.scale, nfolds, nruns, 
+  c(seq(10,40,1), seq(45,100,5)))
 
 # Plot 2p cv knn - multirun ----
 cv.2p.rmse.multi.melt = melt(cv.2p.rmse.multi, id.vars="k")
