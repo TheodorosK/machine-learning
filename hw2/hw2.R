@@ -253,8 +253,10 @@ RunMultiKKNNCV <- function(frm, data, nfolds, nruns, k.values) {
                     mean=rowMeans(rmse.multi),
                     run=rmse.multi))
 }
-cv.2p.rmse.multi <- RunMultiKKNNCV(price ~ mileage + year, dat.scale, nfolds, nruns, 
-                                   c(seq(10,40,1), seq(45,100,5)))
+cv.2p.rmse.multi <- LoadCachedOrRun(
+  RunMultiKKNNCV, 
+  price ~ mileage + year, dat.scale, nfolds, nruns, 
+  c(seq(10,40,1), seq(45,100,5)))
 
 # Plot 2p cv knn - multirun ----
 cv.2p.rmse.multi.melt = melt(cv.2p.rmse.multi, id.vars="k")
@@ -331,3 +333,12 @@ ExportTable(dat[sample(nrow(dat), 5),], "head_dat",
 ExportTable(dat.scale.info[c(4,5), c(1,3,4)], "data_scale",
             "Basic Dataset Statistics", 
             digits=c(0,0,1,1), include.rownames=F)
+
+# How does nfolds affect optimal k? ----
+
+# have this return mean + std
+nfolds.seq <- seq(5, 40, 5)
+optK <- sapply(1:length(nfolds.seq), function(i) {
+  ks <- VarianceKKNN(T = 100, nfolds = nfolds.seq[i])
+  return(mean(ks))
+})
