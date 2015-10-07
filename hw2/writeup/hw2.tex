@@ -27,6 +27,13 @@ Because the training and test samples are being chosen randomly and because the 
 
 We can see the effect of the number of folds on the \textit{distribution} of optimal $k$ values in \cref{fig:nfolds_k_dist}. We run 100 trials of cross validation for 5, 10, and 20 folds and show the distribution of optimal $k$ values as box plots. We can see that for 5-fold cross validation, the spread of optimal $k$ values is fairly high (as is the presence of outliers), but that the spread falls as the number of folds rises. 
 
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{nfolds_k_dist.pdf}
+  \caption{Distribution of Optimal k by Number of CV Folds}
+  \label{fig:nfolds_k_dist}
+\end{figure}
+
 As it turns out, the mean optimal $k$ chosen over 100 trials of 5-fold cross validation is $k=27$, so our value of $k$ chosen over 1 run above is close to optimal. For the duration of the exercise we will use $k=28$ since the difference between the two model fits is negligible.
 
 The difference between our ``eyeballed'' value of $k$ and the optimal value of $k$ discussed above is shown in \cref{fig:1p_fit}. The difference between the two is very small; the eyeballed value of $k=40$ provides a slightly smoother fit of the data, but by and large there is an insignificant difference between the fits.
@@ -55,12 +62,22 @@ Using the value of $k=28$ discussed above, our prediction for the price of a car
 
 In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first 
 
+\input{head_dat.tex}
+
 \begin{figure}[!htb]
   \centering
   \includegraphics[scale=.5]{2p_cv_k.pdf}
   \caption{5-fold kNN CV for 2 Attributes}
   \label{fig:2p_k}
 \end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[scale=.5]{2p_cv_multi_k.pdf}
+  \caption{10-run 5-fold kNN CV average for 2 Attributes}
+  \label{fig:2p_k_multi}
+\end{figure}
+
 
 \subsection{Price Predictions}
 \input{2p_predict.tex}
