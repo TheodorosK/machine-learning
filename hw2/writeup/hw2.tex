@@ -29,8 +29,8 @@ We can see the effect of the number of folds on the \textit{distribution} of opt
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[scale=.5]{nfolds_k_dist.pdf}
   \caption{Distribution of Optimal k by Number of CV Folds}
+  \includegraphics[scale=.5]{nfolds_k_dist.pdf}
   \label{fig:nfolds_k_dist}
 \end{figure}
 
@@ -40,41 +40,41 @@ The difference between our ``eyeballed'' value of $k$ and the optimal value of $
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[scale=.5]{1p_cv_k.pdf}
   \caption{5-fold kNN CV for 1 Attribute}
+  \includegraphics[scale=.5]{1p_cv_k.pdf}
   \label{fig:1p_k}
 \end{figure}
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[scale=.5]{1p_fit_eye_ev.pdf}
   \caption{Comparison of Fit Between ``Eyeball'' and CV Chosen $k$'s}
+  \includegraphics[scale=.5]{1p_fit_eye_ev.pdf}
   \label{fig:1p_fit}
 \end{figure}
 
 \subsection{Price Predictions}
 
-Using the value of $k=28$ discussed above, our prediction for the price of a car with 100 thousand miles is \$16,676.18 (see \cref{tab:1p_predict}). We can see the predicted point in \cref{fig_1p_fit_eye} outlined in black; it appears that the predicted value is well within the range of observed values for similar cars.
+Using the value of $k=28$ discussed above, our prediction for the price of a car with 100 thousand miles is \$16,676.18 (see \cref{tab:1p_predict}). We can see the predicted point in \cref{fig:1p_fit} outlined in black; it appears that the predicted value is well within the range of observed values for similar cars.
 
 \input{1p_predict.tex}
 
 \section{kNN with 2 Attributes}
 
-In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first 
+In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first examined the data-set and noted that the two attributes of interest, mileage and year are on completely different scales
 
 \input{head_dat.tex}
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[scale=.5]{2p_cv_k.pdf}
   \caption{5-fold kNN CV for 2 Attributes}
+  \includegraphics[scale=.5]{2p_cv_k.pdf}
   \label{fig:2p_k}
 \end{figure}
 
 \begin{figure}[!htb]
   \centering
-  \includegraphics[scale=.5]{2p_cv_multi_k.pdf}
   \caption{10-run 5-fold kNN CV average for 2 Attributes}
+  \includegraphics[scale=.5]{2p_cv_multi_k.pdf}
   \label{fig:2p_k_multi}
 \end{figure}
 
@@ -85,8 +85,8 @@ In this section we explore the benefits of introducing a second attribute to our
 \section{RMSE Comparison of kNN for 1 \& 2 Attributes}
 \begin{figure}[!htb]
   \centering
-  \includegraphics[scale=.5]{1p_2p_cv_compare.pdf}
   \caption{RMSE for 1 \& 2 Attributes}
+  \includegraphics[scale=.5]{1p_2p_cv_compare.pdf}
   \label{fig:p_compare}
 \end{figure}
 
