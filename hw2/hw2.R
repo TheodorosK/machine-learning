@@ -327,3 +327,12 @@ ExportTable(dat[sample(nrow(dat), 5),], "head_dat",
 ExportTable(dat.scale.info[c(4,5), c(1,3,4)], "data_scale",
             "Basic Dataset Statistics", 
             digits=c(0,0,1,1), include.rownames=F)
+
+# How does nfolds affect optimal k? ----
+
+# have this return mean + std
+nfolds.seq <- seq(5, 40, 5)
+optK <- sapply(1:length(nfolds.seq), function(i) {
+  ks <- VarianceKKNN(T = 100, nfolds = nfolds.seq[i])
+  return(mean(ks))
+})
