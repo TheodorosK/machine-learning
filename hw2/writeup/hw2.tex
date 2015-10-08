@@ -38,9 +38,7 @@ As it turns out, the mean optimal $k$ chosen over 100 trials of 5-fold cross val
 
 The difference between our ``eyeballed'' value of $k$ and the optimal value of $k$ discussed above is shown in \cref{fig:1p_fit}. The difference between the two is very small; the eyeballed value of $k=40$ provides a slightly smoother fit of the data, but by and large there is an insignificant difference between the fits.
 
-As an aside, we wanted to test the value in using 5-fold cross validation instead of 10- or 20-fold, so we ran the following experiment. For varying values of fold numbers from 5-200, run a trial of n-fold cross validation and take the mean and the variance of the optimal $k$ selected across all trials. As it turns out, there is no systematic pattern in the mean across number of folds, but the variance of estimates of $k$ falls significantly as the number of folds increases from 5 to 20. However, after 20 folds, the variance of the optimal $k$'s is roughly constant, suggesting that there is no additional benefit to adding folds. This is a useful cut-off point, since computing cross validation for more than 20 folds becomes computationally expensive.
-
-
+As an aside, we wanted to test the value in using 5-fold cross validation instead of 10- or 20-fold, so we ran the following experiment. For varying values of fold numbers from 5-200, run a trial of n-fold cross validation and take the mean and the variance of the optimal $k$ selected across all trials. As it turns out, there is no systematic pattern in the mean across number of folds, but the variance of estimates of $k$ falls significantly as the number of folds increases from 5 to 20 (see the results in \cref{tab:cv_vars}). However, after 20 folds, the variance of the optimal $k$'s is roughly constant, suggesting that there is no additional benefit to adding folds. This is a useful cut-off point, since computing cross validation for more than 20 folds becomes computationally expensive.
 
 \begin{figure}[!htb]
   \centering
@@ -55,6 +53,8 @@ As an aside, we wanted to test the value in using 5-fold cross validation instea
   \includegraphics[scale=.5]{1p_fit_eye_ev.pdf}
   \label{fig:1p_fit}
 \end{figure}
+
+\input{cv_vars.tex}
 
 \subsection{Price Predictions}
 
@@ -96,7 +96,7 @@ Using the kNN model with $k=26$ found in \cref{sec:2p} we now turn to predicting
 \input{2p_predict.tex}
 
 \section{Comparison of kNN for 1 \& 2 Attributes}
-In this section we compare the models produced with 1 \& 2 attributes.  Here we sweep $k$ while performing a 5-fold CV kNN train/test sequence calculating the average RMSE at each value of $k$.  \Cref{fig:p_compare} shows the difference between having 1 attribute (mileage) and having 2 attributes (mileage + year).  
+In this section we compare the models produced with 1 \& 2 attributes.  Here we sweep $k$ while performing a 5-fold CV kNN train/test sequence calculating the average RMSE at each value of $k$.  \Cref{fig:p_compare} shows the difference between having 1 attribute (mileage) and having 2 attributes (mileage + year).  There is a noticeable difference between the two with the second attribute lowering the RMSE quite dramatically.  Indeed, the average per-fold correlation between $price$ and $\widehat{price}$ is 86.3\% and 95.5\% for 1 and 2 attributes respectively.  Therefore it appears that adding $year$ yields a better model than $mileage$ alone.
 
 \begin{figure}[!htb]
   \centering
