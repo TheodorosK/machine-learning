@@ -318,12 +318,14 @@ ExportTable(predict.1p, "1p_predict", "Predicted Price with 1 Attribute",
             include.rownames=F)
 
 predict.2p = data.frame(year=2008, mileage=75e3)
+min.2p.k <- cv.2p.rmse.multi$k[which.min(cv.2p.rmse.multi$mean)]
 predict.2p$price_hat <- kknn(
   price ~ mileage + year, train=dat.scale, 
   test=IntelliScale(predict.2p, dat.scale.info), 
-  k=cv.2p.min.rmse$k, kernel='rectangular')$fitted.value
+  k=min.2p.k, kernel='rectangular')$fitted.value
 
-ExportTable(predict.2p, "2p_predict", "Predicted Price with 2 Attributes",
+ExportTable(predict.2p, "2p_predict", 
+            sprintf("Predicted Price with 2 Attributes (k=%d)", min.2p.k),
             c("Year", "Mileage", "$\\widehat{price}$"), display=c('d', 'd', 'd', 'f'),
             include.rownames=F)
 
