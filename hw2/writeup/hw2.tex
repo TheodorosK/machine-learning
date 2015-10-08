@@ -38,6 +38,10 @@ As it turns out, the mean optimal $k$ chosen over 100 trials of 5-fold cross val
 
 The difference between our ``eyeballed'' value of $k$ and the optimal value of $k$ discussed above is shown in \cref{fig:1p_fit}. The difference between the two is very small; the eyeballed value of $k=40$ provides a slightly smoother fit of the data, but by and large there is an insignificant difference between the fits.
 
+As an aside, we wanted to test the value in using 5-fold cross validation instead of 10- or 20-fold, so we ran the following experiment. For varying values of fold numbers from 5-200, run a trial of n-fold cross validation and take the mean and the variance of the optimal $k$ selected across all trials. As it turns out, there is no systematic pattern in the mean across number of folds, but the variance of estimates of $k$ falls significantly as the number of folds increases from 5 to 20. However, after 20 folds, the variance of the optimal $k$'s is roughly constant, suggesting that there is no additional benefit to adding folds. This is a useful cut-off point, since computing cross validation for more than 20 folds becomes computationally expensive.
+
+
+
 \begin{figure}[!htb]
   \centering
   \caption{5-fold kNN CV for 1 Attribute}
@@ -58,7 +62,7 @@ Using the value of $k=28$ discussed above, our prediction for the price of a car
 
 \input{1p_predict.tex}
 
-\section{kNN with 2 Attributes}
+\section{kNN with 2 Attributes}\label{sec:2p}
 
 In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first examine the data-set and note that the two attributes used to predict price are on seemingly different scales.  In \cref{tab:data_scale} we see that the means are completely different and the standard deviations are also different. To avoid over-weighting one parameter with the other during model selection and prediction, these two attributes are independently scaled to ensure that $\mu_i=1$ and $\sigma_i^2=1$ using \cref{eq:scale}.  These scaled values are then used as inputs when training kNN.  When predicting prices, the inputs are scaled using the exact same parameters.
 
@@ -87,13 +91,13 @@ To test the stability of this choice in $k$, 20 runs of the 5-fold CV kNN algori
 \end{figure}
 
 \subsection{Price Predictions}
-
+Using the kNN model with $k=26$ found in \cref{sec:2p} we now turn to predicting the price of a 2008 car with 75,000 miles.  To predict the value of the car we first scale the year and mileage using the scale values used in the original data-set (see \cref{tab:data_scale}) and then apply kNN to predict the price.  The predicted price of such a car is found to be $\$31,646.65$ (see \cref{tab:2p_predict}).
 
 \input{2p_predict.tex}
 
+\section{Comparison of kNN for 1 \& 2 Attributes}
+In this section we compare the models produced with 1 \& 2 attributes.  Here we sweep $k$ while performing a 5-fold CV kNN train/test sequence calculating the average RMSE at each value of $k$.  \Cref{fig:p_compare} shows the difference between having 1 attribute (mileage) and having 2 attributes (mileage + year).  
 
-
-\section{RMSE Comparison of kNN for 1 \& 2 Attributes}
 \begin{figure}[!htb]
   \centering
   \caption{RMSE for 1 \& 2 Attributes}
