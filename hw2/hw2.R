@@ -328,11 +328,21 @@ ExportTable(dat.scale.info[c(4,5), c(1,3,4)], "data_scale",
             "Basic Dataset Statistics", 
             digits=c(0,0,1,1), include.rownames=F)
 
-# How does nfolds affect optimal k? ----
+# Appendix: Does optimal k vary systematically with n-folds? ----
 
-# have this return mean + std
-nfolds.seq <- seq(5, 40, 5)
-optK <- sapply(1:length(nfolds.seq), function(i) {
-  ks <- VarianceKKNN(T = 100, nfolds = nfolds.seq[i])
-  return(mean(ks))
+nfolds.seq <- c(5, 10, 20, 50, 100, 250, 500)
+opt.k <- sapply(1:length(nfolds.seq), function(i) {
+  cat(sprintf("%d,", nfolds.seq[i]))
+  k <- VarianceKKNN(100, nfolds.seq[i])
+  return(c(mean(k), sqrt(var(k))))
 })
+cat("done\n")
+
+opt.k <- data.frame(t(opt.k))
+opt.k <- cbind(nfolds.seq, opt.k)
+rownames(opt.k) <- NULL
+colnames(opt.k) <- c("nfolds", "mean", "std")
+
+ExportTable(table = opt.k, file = "cv_vars", 
+            caption = "Mean and Variance k across CV Folds", 
+            colnames = c("Num Folds", "Mean", "Std. Dev."), include.rownames=F)
