@@ -66,10 +66,9 @@ In this section we explore the benefits of introducing a second attribute to our
 x_{i,scaled} = \frac{x_i-\mu_i}{\sigma_i} 
 \end{equation}
 
-These scaled values are input to kNN and used to predict price.
-
-% \input{head_dat.tex}
 \input{data_scale.tex}
+
+With the resulting scaled inputs we run 5-fold cross-validated kNN, sweeping k from 1 to 300.  To save computation time, we focused our search by increasing the $k$ step-size in the range $k\in[14,50]$ reducing the step-size outside of this range. \Cref{fig:2p_k} shows the mean and per-fold RMSE a single run of the cv kNN; here we find that RMSE is minimized with a choice of $k=23$.
 
 \begin{figure}[!htb]
   \centering
@@ -78,16 +77,21 @@ These scaled values are input to kNN and used to predict price.
   \label{fig:2p_k}
 \end{figure}
 
+To test the stability of this choice in $k$, 20 runs of the 5-fold CV kNN algorithm were run on a further focused range of $k\in[10,100]$.  The resulting RSMEs were averaged together and the minimum RMSE was found to occur at $k=26$.  \Cref{fig:2p_k_multi} shows a large amount of run-to-run variation in the minimal $k$  ($\sigma_{k_{min}}=2.81$).  Therefore, for predictive purposes we will use this value of $k$.
+
 \begin{figure}[!htb]
   \centering
-  \caption{10-run 5-fold kNN CV average for 2 Attributes}
+  \caption{20-run 5-fold kNN CV average for 2 Attributes}
   \includegraphics[scale=.5]{2p_cv_multi_k.pdf}
   \label{fig:2p_k_multi}
 \end{figure}
 
-
 \subsection{Price Predictions}
+
+
 \input{2p_predict.tex}
+
+
 
 \section{RMSE Comparison of kNN for 1 \& 2 Attributes}
 \begin{figure}[!htb]
