@@ -239,7 +239,7 @@ plot(g)
 PlotDone()
 
 # 2p cv knn - multirun ----
-nruns <- 10
+nruns <- 50
 RunMultiKKNNCV <- function(frm, data, nfolds, nruns, k.values) {
   ncores <- detectCores()
   clust <- makeCluster(ncores, type = "FORK")
