@@ -261,13 +261,17 @@ cv.2p.rmse.multi <- LoadCachedOrRun(
 # Plot 2p cv knn - multirun ----
 cv.2p.rmse.multi.melt = melt(cv.2p.rmse.multi, id.vars="k")
 plot.colors = gg_color_hue(nruns+1)
+min.k <- cv.2p.rmse.multi$k[which.min(cv.2p.rmse.multi$mean)]
+min.rmse <- min(cv.2p.rmse.multi$mean)
 g <- ggplot(data=cv.2p.rmse.multi.melt) + 
-  geom_point(aes(x=k, y=value, color=variable)) + 
-  geom_line(aes(x=k, y=value, color=variable)) +
+  geom_point(aes(x=k, y=value, color=variable), show_guide=F) + 
+  geom_line(aes(x=k, y=value, color=variable), show_guide=F) +
   scale_color_manual(
     name = "Run",
-    values=c(plot.colors[1], alpha(plot.colors[2:(nruns+1)], 0.15)),
-    labels = c("Mean", sprintf("Run #%d", 1:nruns))) +
+    values=c("black", alpha(plot.colors[2:(nruns+1)], 0.15))) +
+  geom_point(aes(x=min.k, y=min.rmse), size=5, pch=21) +
+  geom_text(aes(x=min.k, y=min.rmse, hjust=0, vjust=0,
+                label=sprintf("Minimum RMSE @ k=%d", min.k))) +
   theme_bw() + labs(y="RMSE")
 PlotSetup("2p_cv_multi_k")
 plot(g)
