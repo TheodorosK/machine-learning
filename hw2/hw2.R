@@ -354,5 +354,5 @@ rownames(opt.k) <- NULL
 colnames(opt.k) <- c("nfolds", "mean", "std")
 
 ExportTable(table = opt.k, file = "cv_vars", 
-            caption = "Mean and Variance k across CV Folds", 
+            caption = "Mean and Variance k across CV Folds", display = c("d", "f", "f"),
             colnames = c("Num Folds", "Mean", "Std. Dev."), include.rownames=F)
