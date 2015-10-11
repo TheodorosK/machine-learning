@@ -356,3 +356,40 @@ colnames(opt.k) <- c("nfolds", "mean", "std")
 ExportTable(table = opt.k, file = "cv_vars", 
             caption = "Mean and Variance k across CV Folds", display = c("d", "f", "f"),
             colnames = c("Num Folds", "Mean", "Std. Dev."), include.rownames=F)
+
+# correlations ----
+RunKKNNCVFitVar <- function(frm, data, nfolds, k.values) {
+  fold.info <- cvFolds(nrow(data), K = nfolds)
+  results.raw <- list(corr = matrix(0, length(k.values), nfolds))
+  
+  for (fold in 1:nfolds) {
+    fold.test.idx <- fold.info$subset[fold.info$which == fold]
+    data.test <- data[fold.test.idx, ]
+    data.train <- data[-fold.test.idx, ]
+    
+    cat(sprintf("Fold %d => k=", fold))
+    
+    for (k.idx in 1:length(k.values)) {
+      k <- k.values[k.idx]
+      y <- data.test[,all.vars(frm)[1]]
+      model <- kknn(frm, train = data.train, test = data.test, k = k, 
+                    kernel = 'rectangular')
+      y.hat <- model$fitted.values
+      results.raw[["corr"]][k.idx, fold] <- cor(y, y.hat)
+      
+      cat(sprintf("%d,", k))
+    }
+    cat("done\n")
+  }
+  
+  # Aggregate some data.
+  rmse <- data.frame(
+    k = k.values,
+    mean = rowMeans(results.raw[["corr"]]),
+    # Per-fold RMSE
+    fold = results.raw[["corr"]])
+  return(rmse)
+}
+print(corr.1p <- RunKKNNCVFitVar(price ~ mileage, dat, 5, 28))
+print(corr.2p <- RunKKNNCVFitVar(price ~ year + mileage, dat.scale, 5, 23))
+
