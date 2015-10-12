@@ -15,17 +15,11 @@ set.seed(1010)
 # Cars data set: goal is to predict price
 # Split into train (0.5), validate (0.25), test (0.25)
 cars <- read.csv(file = "../data/usedcars.csv")
+cars.partitioned <- PartitionDataset(c(0.5, 0.25, 0.25), cars)
 
-n0 = nrow(cars)
-n1 = floor(n0/2)
-n2 = floor(n0/4)
-n3 = n0 - n1 - n2
-
-idx <- sample(1:n0, n0)
-
-cars.train <- cars[idx[1:n1], ]
-cars.val <- cars[idx[n1+1:n2], ]
-cars.test <- cars[idx[n1+n2+1:n3], ]
+cars.train <- cars.partitioned[[1]]
+cars.val <- cars.partitioned[[2]]
+cars.test <- cars.partitioned[[3]]
 
 # Trees -----------------------------------------------------------------------
 
@@ -35,14 +29,14 @@ cars.test <- cars[idx[n1+n2+1:n3], ]
 FitAndPruneTree <- function(form, data) {
   
   tree <- rpart(form = form, data = data)
-
+  
   idx.best = which.min(tree$cptable[, "xerror"])
   cp.best <- tree$cptable[idx.best, "CP"]
   
   tree.prune <- prune(tree, cp = cp.best)
   
   return(list(tree, tree.prune))
-
+  
 }
 
 trees.small <- FitAndPruneTree("price ~ mileage", cars.test)
@@ -68,7 +62,7 @@ for (b in 1:B) {
   
   cat(sprintf("%d,", b))
   
-  bsamp <- sample(1:n1, n1, replace = T) # bootstrap sample with replacement
+  bsamp <- sample(1:nrow(cars.test), nrow(cars.test), replace = T) # bootstrap sample with replacement
   
   # do not prune trees!
   tree.small = rpart(price ~ mileage, data = cars.test[bsamp, ])
