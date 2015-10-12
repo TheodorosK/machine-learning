@@ -53,7 +53,8 @@ cat("\n\n-----bootstrap [MP]-----\n")
 
 RunBootStrap <- function(B, parallel=T) {
   require(snowfall)
-  sfInit(parallel = parallel)
+  
+  sfInit(cpus = detectCores(), parallel = parallel)
   if (sfParallel()) { 
     sfRemoveAll()
     sfExport(list=c("cars.test", "cars.val"))
@@ -119,6 +120,23 @@ cat("\n\n-----random forest-----\n\n")
 rf.small <- randomForest(price ~ mileage, data = cars.test, do.trace = 20)
 rf.big <- randomForest(price ~ ., data = cars.test, do.trace = 20)
 
+# Multiple Regression ----
+require(gamlr)
+
+doGamlr <- function(frm, data.train, data.valid, ...) {
+  resp <- model.response(model.frame(frm, data=data.train))
+  mm <- model.matrix(frm, data.train)[,-1]
+  lin.model <- cv.gamlr(mm, resp, verb = T, ...)
+  plot(lin.model)
+
+  x <- model.matrix(frm, data.valid)[,-1]
+  return(predict(lin.model, x, select="1se"))
+}
+lin.reg <- drop(exp(doGamlr(
+  log(price) ~ . + .^2, 
+  cars.train, cars.val, 
+  lambda.min=exp(-9))))
+
 # Predict ---------------------------------------------------------------------
 
 predict.val = data.frame(
@@ -129,5 +147,6 @@ predict.val = data.frame(
   bag.small = rowMeans(bs.pred.small),
   bag.big = rowMeans(bs.pred.big),
   rf.small = predict(rf.small, newdata = cars.val),
-  rf.big = predict(rf.big, newdata = cars.val)
+  rf.big = predict(rf.big, newdata = cars.val),
+  lin.reg = lin.reg
 )
