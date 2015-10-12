@@ -108,8 +108,12 @@ bs.pred.big <- bs.results[["large"]]
 # cat("done.\n")
 
 # Random forest ---------------------------------------------------------------
-# Look carefully at mtry; 3 gives me a warning but the default runs fine
-# We could also do some experiments with ntree
+# Look carefully at mtry; 3 gives me a warning but the default runs fine:
+# for price ~ mileage => p=1.  mtry the number of randomly sampled covariates 
+# test at each branch must be between [1, p];
+# Can definitely try a higher number of nodes for the price ~ .
+#
+# We could also do some experiments with ntree.
 
 cat("\n\n-----random forest-----\n\n")
 rf.small <- randomForest(price ~ mileage, data = cars.test, do.trace = 20)
