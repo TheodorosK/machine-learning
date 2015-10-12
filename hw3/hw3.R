@@ -39,40 +39,73 @@ FitAndPruneTree <- function(form, data) {
   
 }
 
-trees.small <- FitAndPruneTree("price ~ mileage", cars.test)
+trees.small <- FitAndPruneTree(price ~ mileage, cars.test)
 tree.small <- trees.small[1][[1]]
 tree.small.prune <- trees.small[2][[1]]
 
-trees.big <- FitAndPruneTree("price ~ .", cars.test)
+trees.big <- FitAndPruneTree(price ~ ., cars.test)
 tree.big <- trees.big[1][[1]]
 tree.big.prune <- trees.big[2][[1]]
 
-# Bagging ---------------------------------------------------------------------
-# TODO: this code should be parallelized so we can use large B, then we should 
+# Bagging MP ---------------------------------------------------------------------
 # run an experiment to see if predictive accuracy increases with B
+cat("\n\n-----bootstrap [MP]-----\n")
 
-B <- 1e2 # number of bootstrap samples
+RunBootStrap <- function(B, parallel=T) {
+  require(snowfall)
+  sfInit(parallel = parallel)
+  if (sfParallel()) { 
+    sfRemoveAll()
+    sfExport(list=c("cars.test", "cars.val"))
+  }
+  sfLibrary(rpart)
+  par.results <- sfClusterApplyLB(1:B, function(b) {
+    cat(sprintf("%d,", b))
+    # bootstrap sample with replacement
+    bsamp <- sample(1:nrow(cars.test), nrow(cars.test), replace = T)
 
-bs.pred.small = matrix(data = NA, nrow = nrow(cars.val), ncol = B)
-bs.pred.big = matrix(data = NA, nrow = nrow(cars.val), ncol = B)
-
-cat("\n\n-----bootstrap-----\n")
-cat(sprintf("B = %d\n\n", B))
-for (b in 1:B) {
+    # do not prune trees!
+    tree.small = rpart(price ~ mileage, data = cars.test[bsamp, ])
+    tree.large = rpart(price ~ ., data = cars.test[bsamp, ])
+    
+    return(list(small=predict(tree.small, newdata = cars.val),
+                large=predict(tree.large, newdata = cars.val)))
+  })
+  cat("done\n")
+  sfStop()
   
-  cat(sprintf("%d,", b))
-  
-  bsamp <- sample(1:nrow(cars.test), nrow(cars.test), replace = T) # bootstrap sample with replacement
-  
-  # do not prune trees!
-  tree.small = rpart(price ~ mileage, data = cars.test[bsamp, ])
-  tree.big = rpart(price ~ ., data = cars.test[bsamp, ])
-  
-  bs.pred.small[, b] <- predict(tree.small, newdata = cars.val)
-  bs.pred.big[, b] <- predict(tree.big, newdata = cars.val)
-  
+  # Combine parallel results.
+  pred.small <- matrix(data = NA, nrow = nrow(cars.val), ncol = B)
+  pred.large <- matrix(data = NA, nrow = nrow(cars.val), ncol = B)
+  for (b in 1:B) {
+    pred.small[,b] <- par.results[[b]][["small"]]
+    pred.large[,b] <- par.results[[b]][["large"]]
+  }
+  return(list(small=pred.small,
+              large=pred.large))
 }
-cat("done.\n")
+bs.results <- RunBootStrap(100)
+bs.pred.small <- bs.results[["small"]]
+bs.pred.big <- bs.results[["large"]]
+
+# # Bagging ----
+# 
+# cat(sprintf("B = %d\n\n", B))
+# for (b in 1:B) {
+#   
+#   cat(sprintf("%d,", b))
+#   
+#   bsamp <- sample(1:nrow(cars.test), nrow(cars.test), replace = T) # bootstrap sample with replacement
+#   
+#   # do not prune trees!
+#   tree.small = rpart(price ~ mileage, data = cars.test[bsamp, ])
+#   tree.big = rpart(price ~ ., data = cars.test[bsamp, ])
+#   
+#   bs.pred.small[, b] <- predict(tree.small, newdata = cars.val)
+#   bs.pred.big[, b] <- predict(tree.big, newdata = cars.val)
+#   
+# }
+# cat("done.\n")
 
 # Random forest ---------------------------------------------------------------
 # Look carefully at mtry; 3 gives me a warning but the default runs fine
