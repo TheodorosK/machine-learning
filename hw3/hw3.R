@@ -131,64 +131,82 @@ rf.big <- randomForest(price ~ ., data = cars.test, do.trace = 20)
 # -- so far I'm assuming that there is no interaction effect of tuning params
 #    to really test this, need to simulate in 3d space, right?
 
-TestGBM <- function(export.list, test.param, test.range) {
+TestGBM <- function(export.list, test.param, test.params, nTrials) {
+  
   sfInit(cpus = detectCores(), parallel = T)
   if (sfParallel()) { 
     sfRemoveAll()
     sfExport(list=export.list)
   }
   sfLibrary(gbm)
-  rmse.boost <- sfClusterApplyLB(1:length(test.range), function(i) {
-    if (test.param == "n.trees") {
-      boost <- gbm(formula = price ~ ., distribution = "gaussian", 
-                   data = cars.test, n.trees = test.range[i], 
-                   interaction.depth = boost.indepth,
-                   shrinkage = boost.shrink) 
-    } else if (test.param == "interaction.depth") {
-      boost <- gbm(formula = price ~ ., distribution = "gaussian", 
-                   data = cars.test, n.trees = boost.ntree, 
-                   interaction.depth = test.range[i],
-                   shrinkage = boost.shrink) 
-    } else if (test.param == "shrinkage") {
-      boost <- gbm(formula = price ~ ., distribution = "gaussian", 
-                   data = cars.test, n.trees = boost.ntree, 
-                   interaction.depth = boost.indepth,
-                   shrinkage = test.range[i]) 
-    } else {
-      stop("That is not a valid test parameter")
-    } 
-    price.hat <- predict(boost, newdata = cars.val, n.trees = boost.ntree)
-    return(mean(sqrt((cars.val$price - price.hat)^2)))
+  boost.test <- sfClusterApplyLB(1:nTrials, function(t) {
+    
+    rmse <- rep(NA, length(test.params))
+    for (i in 1:length(test.params)) {
+      if (test.param == "n.trees") {
+        boost <- gbm(formula = price ~ ., distribution = "gaussian", 
+                     data = cars.test, n.trees = test.params[i], 
+                     interaction.depth = boost.indepth,
+                     shrinkage = boost.shrink) 
+      } else if (test.param == "interaction.depth") {
+        boost <- gbm(formula = price ~ ., distribution = "gaussian", 
+                     data = cars.test, n.trees = boost.ntree, 
+                     interaction.depth = test.params[i],
+                     shrinkage = boost.shrink) 
+      } else if (test.param == "shrinkage") {
+        boost <- gbm(formula = price ~ ., distribution = "gaussian", 
+                     data = cars.test, n.trees = boost.ntree, 
+                     interaction.depth = boost.indepth,
+                     shrinkage = test.params[i]) 
+      } else {
+        stop("That is not a valid test parameter")
+      } 
+      
+      price.hat <- predict(boost, newdata = cars.val, n.trees = boost.ntree)
+      rmse[i] <- mean(sqrt((cars.val$price - price.hat)^2))
+      
+    } # end for loop
+    
+    return(test.params[which.min(rmse)])
+    
   })
-  cat("done\n")
   sfStop()
-  return(unlist(rmse.boost))    
+  
+  return(unlist(boost.test))
+  
 }
 
-boost.ntree = 70
+boost.ntree = 80
 boost.indepth = 9
 boost.shrink = 0.16
 
-test.ntree <- seq(30, 100, 10)
-test.indepth <- seq(5, 15)
-test.shrink <- seq(0.01, 0.5, 0.02)
-export.list = c("cars.test", "cars.val", "test.ntree", "test.indepth", "test.shrink",
+export.list = c("cars.test", "cars.val", "seq.ntree", "seq.indepth", "seq.shrink",
                 "boost.ntree", "boost.indepth", "boost.shrink")
 
-rmse.boost <- TestGBM(export.list, "n.trees", test.ntree)
-cat(sprintf("minimum rmse when using n.tree = %d", 
-            test.ntree[which.min(rmse.boost)]))
+# What is the optimal n.trees?
+# This is so noisy!!!
+seq.ntree <- seq(20, 150, 10)
+test.ntree <- TestGBM(export.list, "n.trees", seq.ntree, nTrials = 1000)
+cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
+PlotSetup("histo_ntree")
+hist(test.ntree)
+PlotDone()
 
-# Try to smooth out the run-to-run variation (this takes a while)
-# Q: is it wrong to parallelize one layer below this? 
-T <- 100
-opt.ntree <- rep(NA, 10)
-for (i in 1:T) {
-  cat(sprintf("\n\n- - - - %d - - - -\n\n", i))
-  rmse.boost <- TestGBM(export.list, "n.trees", test.ntree)
-  opt.ntree[i] <- test.ntree[which.min(rmse.boost)]
-}
-cat("done\n")
+# What is the optimal interaciton.depth?
+seq.indepth <- seq(5, 15)
+test.indepth <- TestGBM(export.list, "interaction.depth", seq.indepth, nTrials = 1000)
+cat(sprintf("the \"optimal\" value of interaction.depth is %.1f", mean(test.indepth)))
+PlotSetup("histo_indepth")
+hist(test.indepth)
+PlotDone()
+
+# What is the optimal shrinkage parameter?
+seq.shrink <- seq(0.01, 0.5, 0.02)
+test.shrink <- TestGBM(export.list, "shrinkage", seq.shrink, nTrials = 1000)
+cat(sprintf("the \"optimal\" value of shrinkage param is %.1f", mean(test.shrink)))
+PlotSetup("histo_shrink")
+hist(test.shrink)
+PlotDone()
 
 # Now with the "tuned" parameters
 
