@@ -39,11 +39,11 @@ FitAndPruneTree <- function(form, data) {
   
 }
 
-trees.small <- FitAndPruneTree(price ~ mileage, cars.test)
+trees.small <- FitAndPruneTree(price ~ mileage, cars.train)
 tree.small <- trees.small[1][[1]]
 tree.small.prune <- trees.small[2][[1]]
 
-trees.big <- FitAndPruneTree(price ~ ., cars.test)
+trees.big <- FitAndPruneTree(price ~ ., cars.train)
 tree.big <- trees.big[1][[1]]
 tree.big.prune <- trees.big[2][[1]]
 
@@ -57,17 +57,17 @@ RunBootStrap <- function(B, parallel=T) {
   sfInit(cpus = detectCores(), parallel = parallel)
   if (sfParallel()) { 
     sfRemoveAll()
-    sfExport(list=c("cars.test", "cars.val"))
+    sfExport(list=c("cars.train", "cars.val"))
   }
   sfLibrary(rpart)
   par.results <- sfClusterApplyLB(1:B, function(b) {
     cat(sprintf("%d,", b))
     # bootstrap sample with replacement
-    bsamp <- sample(1:nrow(cars.test), nrow(cars.test), replace = T)
+    bsamp <- sample(1:nrow(cars.train), nrow(cars.train), replace = T)
 
     # do not prune trees!
-    tree.small = rpart(price ~ mileage, data = cars.test[bsamp, ])
-    tree.large = rpart(price ~ ., data = cars.test[bsamp, ])
+    tree.small = rpart(price ~ mileage, data = cars.train[bsamp, ])
+    tree.large = rpart(price ~ ., data = cars.train[bsamp, ])
     
     return(list(small=predict(tree.small, newdata = cars.val),
                 large=predict(tree.large, newdata = cars.val)))
@@ -96,11 +96,11 @@ bs.pred.big <- bs.results[["large"]]
 #   
 #   cat(sprintf("%d,", b))
 #   
-#   bsamp <- sample(1:nrow(cars.test), nrow(cars.test), replace = T) # bootstrap sample with replacement
+#   bsamp <- sample(1:nrow(cars.train), nrow(cars.train), replace = T) # bootstrap sample with replacement
 #   
 #   # do not prune trees!
-#   tree.small = rpart(price ~ mileage, data = cars.test[bsamp, ])
-#   tree.big = rpart(price ~ ., data = cars.test[bsamp, ])
+#   tree.small = rpart(price ~ mileage, data = cars.train[bsamp, ])
+#   tree.big = rpart(price ~ ., data = cars.train[bsamp, ])
 #   
 #   bs.pred.small[, b] <- predict(tree.small, newdata = cars.val)
 #   bs.pred.big[, b] <- predict(tree.big, newdata = cars.val)
@@ -117,8 +117,8 @@ bs.pred.big <- bs.results[["large"]]
 # We could also do some experiments with ntree.
 
 cat("\n\n-----random forest-----\n\n")
-rf.small <- randomForest(price ~ mileage, data = cars.test, do.trace = 20)
-rf.big <- randomForest(price ~ ., data = cars.test, do.trace = 20)
+rf.small <- randomForest(price ~ mileage, data = cars.train, do.trace = 20)
+rf.big <- randomForest(price ~ ., data = cars.train, do.trace = 20)
 
 # Boosting --------------------------------------------------------------------
 # play with interaction.depth, n.trees, shrinkage
@@ -145,17 +145,17 @@ TestGBM <- function(export.list, test.param, test.params, nTrials) {
     for (i in 1:length(test.params)) {
       if (test.param == "n.trees") {
         boost <- gbm(formula = price ~ ., distribution = "gaussian", 
-                     data = cars.test, n.trees = test.params[i], 
+                     data = cars.train, n.trees = test.params[i], 
                      interaction.depth = boost.indepth,
                      shrinkage = boost.shrink) 
       } else if (test.param == "interaction.depth") {
         boost <- gbm(formula = price ~ ., distribution = "gaussian", 
-                     data = cars.test, n.trees = boost.ntree, 
+                     data = cars.train, n.trees = boost.ntree, 
                      interaction.depth = test.params[i],
                      shrinkage = boost.shrink) 
       } else if (test.param == "shrinkage") {
         boost <- gbm(formula = price ~ ., distribution = "gaussian", 
-                     data = cars.test, n.trees = boost.ntree, 
+                     data = cars.train, n.trees = boost.ntree, 
                      interaction.depth = boost.indepth,
                      shrinkage = test.params[i]) 
       } else {
@@ -180,43 +180,43 @@ boost.ntree = 80
 boost.indepth = 9
 boost.shrink = 0.16
 
-export.list = c("cars.test", "cars.val", "seq.ntree", "seq.indepth", "seq.shrink",
+export.list = c("cars.train", "cars.val", "seq.ntree", "seq.indepth", "seq.shrink",
                 "boost.ntree", "boost.indepth", "boost.shrink")
 
-# What is the optimal n.trees?
-# This is so noisy!!!
-seq.ntree <- seq(20, 150, 10)
-test.ntree <- TestGBM(export.list, "n.trees", seq.ntree, nTrials = 1000)
-cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
-PlotSetup("histo_ntree")
-hist(test.ntree)
-PlotDone()
-
-# What is the optimal interaciton.depth?
-seq.indepth <- seq(5, 15)
-test.indepth <- TestGBM(export.list, "interaction.depth", seq.indepth, nTrials = 1000)
-cat(sprintf("the \"optimal\" value of interaction.depth is %.1f", mean(test.indepth)))
-PlotSetup("histo_indepth")
-hist(test.indepth)
-PlotDone()
-
-# What is the optimal shrinkage parameter?
-seq.shrink <- seq(0.01, 0.5, 0.02)
-test.shrink <- TestGBM(export.list, "shrinkage", seq.shrink, nTrials = 1000)
-cat(sprintf("the \"optimal\" value of shrinkage param is %.1f", mean(test.shrink)))
-PlotSetup("histo_shrink")
-hist(test.shrink)
-PlotDone()
+# # What is the optimal n.trees?
+# # This is so noisy!!!
+# seq.ntree <- seq(20, 150, 10)
+# test.ntree <- TestGBM(export.list, "n.trees", seq.ntree, nTrials = 1000)
+# cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
+# PlotSetup("histo_ntree")
+# hist(test.ntree)
+# PlotDone()
+# 
+# # What is the optimal interaciton.depth?
+# seq.indepth <- seq(5, 15)
+# test.indepth <- TestGBM(export.list, "interaction.depth", seq.indepth, nTrials = 1000)
+# cat(sprintf("the \"optimal\" value of interaction.depth is %.1f", mean(test.indepth)))
+# PlotSetup("histo_indepth")
+# hist(test.indepth)
+# PlotDone()
+# 
+# # What is the optimal shrinkage parameter?
+# seq.shrink <- seq(0.01, 0.5, 0.02)
+# test.shrink <- TestGBM(export.list, "shrinkage", seq.shrink, nTrials = 1000)
+# cat(sprintf("the \"optimal\" value of shrinkage param is %.1f", mean(test.shrink)))
+# PlotSetup("histo_shrink")
+# hist(test.shrink)
+# PlotDone()
 
 # Now with the "tuned" parameters
 
 boost.small <- gbm(formula = price ~ mileage, distribution = "gaussian", 
-                   data = cars.test, n.trees = boost.ntree, 
+                   data = cars.train, n.trees = boost.ntree, 
                    interaction.depth = boost.indepth,
                    shrinkage = boost.shrink, verbose = T)
 
 boost.big <- gbm(formula = price ~ ., distribution = "gaussian", 
-                 data = cars.test, n.trees = boost.ntree, 
+                 data = cars.train, n.trees = boost.ntree, 
                  interaction.depth = boost.indepth,
                  shrinkage = boost.shrink, verbose = T)
 
@@ -266,6 +266,6 @@ rmse.val <- sapply(1:ncol(predict.val), function(c) {
 })
 names(rmse.val) <- names(predict.val)
 
-cat("best model:", names(predict.val)[which.min(rmse.val)])
+cat("best model:", names(predict.val)[which.min(rmse.val)], "\n")
 
 print(rmse.val[order(rmse.val)])
