@@ -183,30 +183,30 @@ boost.shrink = 0.16
 export.list = c("cars.test", "cars.val", "seq.ntree", "seq.indepth", "seq.shrink",
                 "boost.ntree", "boost.indepth", "boost.shrink")
 
-# What is the optimal n.trees?
-# This is so noisy!!!
-seq.ntree <- seq(20, 150, 10)
-test.ntree <- TestGBM(export.list, "n.trees", seq.ntree, nTrials = 1000)
-cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
-PlotSetup("histo_ntree")
-hist(test.ntree)
-PlotDone()
-
-# What is the optimal interaciton.depth?
-seq.indepth <- seq(5, 15)
-test.indepth <- TestGBM(export.list, "interaction.depth", seq.indepth, nTrials = 1000)
-cat(sprintf("the \"optimal\" value of interaction.depth is %.1f", mean(test.indepth)))
-PlotSetup("histo_indepth")
-hist(test.indepth)
-PlotDone()
-
-# What is the optimal shrinkage parameter?
-seq.shrink <- seq(0.01, 0.5, 0.02)
-test.shrink <- TestGBM(export.list, "shrinkage", seq.shrink, nTrials = 1000)
-cat(sprintf("the \"optimal\" value of shrinkage param is %.1f", mean(test.shrink)))
-PlotSetup("histo_shrink")
-hist(test.shrink)
-PlotDone()
+# # What is the optimal n.trees?
+# # This is so noisy!!!
+# seq.ntree <- seq(20, 150, 10)
+# test.ntree <- TestGBM(export.list, "n.trees", seq.ntree, nTrials = 1000)
+# cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
+# PlotSetup("histo_ntree")
+# hist(test.ntree)
+# PlotDone()
+# 
+# # What is the optimal interaciton.depth?
+# seq.indepth <- seq(5, 15)
+# test.indepth <- TestGBM(export.list, "interaction.depth", seq.indepth, nTrials = 1000)
+# cat(sprintf("the \"optimal\" value of interaction.depth is %.1f", mean(test.indepth)))
+# PlotSetup("histo_indepth")
+# hist(test.indepth)
+# PlotDone()
+# 
+# # What is the optimal shrinkage parameter?
+# seq.shrink <- seq(0.01, 0.5, 0.02)
+# test.shrink <- TestGBM(export.list, "shrinkage", seq.shrink, nTrials = 1000)
+# cat(sprintf("the \"optimal\" value of shrinkage param is %.1f", mean(test.shrink)))
+# PlotSetup("histo_shrink")
+# hist(test.shrink)
+# PlotDone()
 
 # Now with the "tuned" parameters
 
