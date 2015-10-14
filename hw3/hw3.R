@@ -223,19 +223,27 @@ boost.big <- gbm(formula = price ~ ., distribution = "gaussian",
 # Multiple Regression ----
 require(gamlr)
 
-doGamlr <- function(frm, data.train, data.valid, ...) {
+doGamlr <- function(frm, data.train, data.valid, plot.name, ...) {
   resp <- model.response(model.frame(frm, data=data.train))
   mm <- model.matrix(frm, data.train)[,-1]
   lin.model <- cv.gamlr(mm, resp, verb = T, ...)
+  
+  PlotSetup(plot.name)
   plot(lin.model)
+  PlotDone()
 
   x <- model.matrix(frm, data.valid)[,-1]
   return(predict(lin.model, x, select="1se"))
 }
 lin.reg <- drop(exp(doGamlr(
   log(price) ~ . + .^2, 
-  cars.train, cars.val, 
+  cars.train, cars.val, "lin_reg_interaction", 
   lambda.min=exp(-9))))
+lin.reg_simple <- unlist(exp(doGamlr(
+  log(price) ~ ., 
+  cars.train, cars.val, "lin_reg_simple",
+  lambda.min=exp(-9))))
+
 
 # Predict ---------------------------------------------------------------------
 
