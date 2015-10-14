@@ -5,6 +5,7 @@ ExportTable <- function(table, file, caption, colnames=NULL,
   if (!is.null(colnames)) { colnames(table) = colnames }
   print(xtable(table, label=paste('tab:', file, sep=''), caption=caption,
                align=align, digits=digits, display=display),
+        caption.placement="top",
         sanitize.text.function=function(x){x},
         file=GetFilename(paste(file, '.tex', sep='')),
         include.rownames=include.rownames)

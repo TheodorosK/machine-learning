@@ -266,7 +266,16 @@ rmse.val <- sapply(1:ncol(predict.val), function(c) {
   mean(sqrt((cars.val$price - predict.val[, c])^2))
 })
 names(rmse.val) <- names(predict.val)
-
 cat("best model:", names(predict.val)[which.min(rmse.val)], "\n")
 
-print(rmse.val[order(rmse.val)])
+rmse.val <- rmse.val[order(rmse.val)]
+print(rmse.val)
+model.names <- c("Boosting Tree (big)", "Random Forest (big)", "LASSO (big)", "Bagging (big)", "Regression Tree (big)", "Pruned Regression Tree (big)", "Boosting Tree (small)", "Bagging (small)", "Regression Tree (small)", "Pruned Regression Tree (small)", "Random Forest (small)")
+df.rmse <- data.frame(models = model.names, 
+                      rmse = rmse.val)
+
+ExportTable(table = df.rmse, file = "rmse_comp", 
+            caption = "Comparison of RMSE for Various Models", 
+            colnames = c("Model", "OOS RMSE (validate)"), include.rownames = F)
+
+
