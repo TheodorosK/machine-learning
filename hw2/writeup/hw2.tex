@@ -64,7 +64,7 @@ Using the value of $k=28$ discussed above, our prediction for the price of a car
 
 \section{kNN with 2 Attributes}\label{sec:2p}
 
-In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first examine the data-set and note that the two attributes used to predict price are on seemingly different scales.  In \cref{tab:data_scale} we see that the means are completely different and the standard deviations are also different. To avoid over-weighting one parameter with the other during model selection and prediction, these two attributes are independently scaled to ensure that $\mu_i=1$ and $\sigma_i^2=1$ using \cref{eq:scale}.  These scaled values are then used as inputs when training kNN.  When predicting prices, the inputs are scaled using the exact same parameters.
+In this section we explore the benefits of introducing a second attribute to our k-nearest neighbors algorithm. We will now use the car's mileage and its model year to predict is resale price.  To apply kNN to the data set we first examine the data-set and note that the two attributes used to predict price are on seemingly different scales.  In \cref{tab:data_scale} we see that the means are completely different and the standard deviations are also different. To avoid over-weighting one parameter with the other during model selection and prediction, these two attributes are independently scaled to ensure that $\mu_i=0$ and $\sigma_i^2=1$ using \cref{eq:scale}.  These scaled values are then used as inputs when training kNN.  When predicting prices, the covariates in the test set are put on the same scale by adjusting with the mean and standard deviation of the training values (to simulate out-of-sample prediction).
 
 \begin{equation}\label{eq:scale}
 x_{i,scaled} = \frac{x_i-\mu_i}{\sigma_i} 
@@ -72,7 +72,7 @@ x_{i,scaled} = \frac{x_i-\mu_i}{\sigma_i}
 
 \input{data_scale.tex}
 
-With the resulting scaled inputs we run 5-fold cross-validated kNN, sweeping k from 1 to 300.  To save computation time, we focused our search by increasing the $k$ step-size in the range $k\in[14,50]$ reducing the step-size outside of this range. \Cref{fig:2p_k} shows the mean and per-fold RMSE a single run of the cv kNN; here we find that RMSE is minimized with a choice of $k=23$.
+With the resulting scaled inputs we run 5-fold cross-validated kNN, sweeping k from 1 to 300.  To save computation time, we focused our search by increasing the $k$ step-size in the range $k\in[14,50]$ reducing the step-size outside of this range. \Cref{fig:2p_k} shows the mean and per-fold RMSE a single run of the cross-validated kNN; here we find that RMSE is minimized with a choice of $k=23$.
 
 \begin{figure}[!htb]
   \centering
@@ -91,12 +91,12 @@ To test the stability of this choice in $k$, 20 runs of the 5-fold CV kNN algori
 \end{figure}
 
 \subsection{Price Predictions}
-Using the kNN model with $k=26$ found in \cref{sec:2p} we now turn to predicting the price of a 2008 car with 75,000 miles.  To predict the value of the car we first scale the year and mileage using the scale values used in the original data-set (see \cref{tab:data_scale}) and then apply kNN to predict the price.  The predicted price of such a car is found to be $\$31,646.65$ (see \cref{tab:2p_predict}).
+Using the kNN model with $k=26$ found in \cref{sec:2p} we now turn to predicting the price of a 2008 car with 75,000 miles.  To predict the value of the car we first scale the year and mileage using the scale values used in the original data set (see \cref{tab:data_scale}) and then apply kNN to predict the price.  The predicted price of such a car is found to be $\$31,646.65$ (see \cref{tab:2p_predict}).
 
 \input{2p_predict.tex}
 
 \section{Comparison of kNN for 1 \& 2 Attributes}
-In this section we compare the models produced with 1 \& 2 attributes.  Here we sweep $k$ while performing a 5-fold CV kNN train/test sequence calculating the average RMSE at each value of $k$.  \Cref{fig:p_compare} shows the difference between having 1 attribute (mileage) and having 2 attributes (mileage + year).  There is a noticeable difference between the two with the second attribute lowering the RMSE quite dramatically.  Indeed, the average per-fold correlation between $price$ and $\widehat{price}$ is 86.3\% and 95.5\% for 1 and 2 attributes respectively.  Therefore it appears that adding $year$ yields a better model than $mileage$ alone.
+In this section we compare the models produced with 1 \& 2 attributes.  Here we sweep $k$ while performing a 5-fold CV kNN train/test sequence calculating the average RMSE at each value of $k$.  \Cref{fig:p_compare} shows the difference between having 1 attribute (mileage) and having 2 attributes (mileage + year).  There is a noticeable difference between the two with the second attribute lowering the RMSE quite dramatically.  Indeed, the average per-fold correlation between $price$ and $\widehat{price}$ is 86.3\% and 95.5\% for 1 and 2 attributes respectively.  Therefore it appears that having both $mileage$ \& $year$ yields a better model than just $mileage$ alone.
 
 \begin{figure}[!htb]
   \centering
