@@ -322,15 +322,34 @@ ExportTable(table = df.rmse, file = "rmse_comp",
 
 # Try the 'best' model on the test set
 
-# Boosting: RMSE is ~2870
+df.rmse.test <- data.frame(models = c("Boosting Tree", "Random Forest", 
+                                      "LASSO Regression"), 
+                           rmse.val = rmse.val[1:3], rmse.test = rep(NA, 3))
+rownames(df.rmse.test) <- NULL
+
+# Boosting
 boost.best <- gbm(formula = price ~ ., distribution = "gaussian", 
                   data = rbind(cars.train, cars.val), 
                   n.trees = boost.ntree, 
                   interaction.depth = boost.indepth,
                   shrinkage = boost.shrink, verbose = T)
 boost.yhat <- predict(boost.best, newdata = cars.test, n.trees = boost.ntree)
-mean(sqrt((cars.test$price - boost.yhat)^2))
+df.rmse.test$rmse.test[1] <- mean(sqrt((cars.test$price - boost.yhat)^2))
 
-rf.best <- randomForest(price ~ ., data = rbind(cars.train, cars.val), do.trace = 20)
+# Random forest
+rf.best <- randomForest(price ~ ., data = rbind(cars.train, cars.val), 
+                        do.trace = 20, ntree = 250)
 rf.yhat <- predict(rf.best, newdata = cars.test)
-mean(sqrt((cars.test$price - rf.yhat)^2))
+df.rmse.test$rmse.test[2] <- mean(sqrt((cars.test$price - rf.yhat)^2))
+
+# LASSO
+lin.yhat <- unlist(exp(doGamlr(
+  log(price) ~ ., 
+  rbind(cars.train, cars.val), cars.test, "lin_reg_best",
+  lambda.min=exp(-9))))
+df.rmse.test$rmse.test[3] <- mean(sqrt((cars.test$price - lin.yhat)^2))
+
+ExportTable(table = df.rmse.test, file = "rmse_test", 
+            caption = "OOS RMSE for Top Three Models", 
+            colnames = c("Model", "RMSE (Validate)", "RMSE (Test)"), 
+            include.rownames = F)
