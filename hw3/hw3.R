@@ -6,6 +6,7 @@ rm(list = ls())
 library(rpart)
 library(randomForest)
 library(gbm)
+library(ggplot2)
 
 source('../utils/source_me.R', chdir = T)
 CreateDefaultPlotOpts(WriteToFile = T)
@@ -28,7 +29,8 @@ cars.test <- cars.partitioned[[3]]
 
 FitAndPruneTree <- function(form, data) {
   
-  tree <- rpart(form = form, data = data)
+  tree <- rpart(form = form, data = data, 
+                control = rpart.control(minsplit = 5, cp = 0.0005))
   
   idx.best = which.min(tree$cptable[, "xerror"])
   cp.best <- tree$cptable[idx.best, "CP"]
@@ -46,6 +48,17 @@ tree.small.prune <- trees.small[2][[1]]
 trees.big <- FitAndPruneTree(price ~ ., cars.train)
 tree.big <- trees.big[1][[1]]
 tree.big.prune <- trees.big[2][[1]]
+
+# Visualize
+require(rpart.plot)
+
+PlotSetup("tree_small")
+rpart.plot(tree.small)
+PlotDone()
+
+PlotSetup("tree_small_prune")
+rpart.plot(tree.small.prune)
+PlotDone()
 
 # Bagging MP ---------------------------------------------------------------------
 # run an experiment to see if predictive accuracy increases with B
@@ -109,16 +122,42 @@ bs.pred.big <- bs.results[["large"]]
 # cat("done.\n")
 
 # Random forest ---------------------------------------------------------------
-# Look carefully at mtry; 3 gives me a warning but the default runs fine:
-# for price ~ mileage => p=1.  mtry the number of randomly sampled covariates 
-# test at each branch must be between [1, p];
-# Can definitely try a higher number of nodes for the price ~ .
-#
-# We could also do some experiments with ntree.
+# Should come back and make a funciton out of this
 
 cat("\n\n-----random forest-----\n\n")
+
 rf.small <- randomForest(price ~ mileage, data = cars.train, do.trace = 20)
-rf.big <- randomForest(price ~ ., data = cars.train, do.trace = 20)
+
+# rf.big <- randomForest(price ~ ., data = cars.train, do.trace = 20, ntree = 250)
+
+ncores <- detectCores()
+ntree.par <- ceiling(500/8)
+
+sfInit(cpus = ncores, parallel = T)
+if (sfParallel()) { 
+  sfRemoveAll()
+  sfExport(list=c("cars.train", "ntree.par"))
+}
+sfLibrary(randomForest)
+rf.par <- sfClusterApplyLB(1:ncores, function(t) {
+  rf <- randomForest(price ~ ., data = cars.train, do.trace = 20, ntree = ntree.par)
+  return(rf)
+})
+sfStop()
+
+rf.big <- combine(rf.par[[1]], rf.par[[2]], rf.par[[3]], rf.par[[4]], 
+                   rf.par[[5]], rf.par[[6]], rf.par[[7]], rf.par[[8]])
+
+# Visualize out-of-bag RMSE (can't do this on a combined tree)
+rf <- randomForest(price ~ ., data = cars.train, do.trace = 20, ntree = 500)
+
+rf.pdat <- data.frame(tree = c(1:length(rf$mse)), mse = rf$mse)
+g <- ggplot(rf.pdat, aes(tree, mse)) + geom_line(size = 2) + 
+  labs(x = "Number of Trees", y = "Out-of-Bag Mean Square Error") + 
+  theme_bw()
+PlotSetup("rf_oob_mse")
+print(g)
+PlotDone()
 
 # Boosting --------------------------------------------------------------------
 # play with interaction.depth, n.trees, shrinkage
@@ -253,6 +292,7 @@ boost.small <- gbm(formula = price ~ mileage, distribution = "gaussian",
                    interaction.depth = boost.indepth,
                    shrinkage = boost.shrink, verbose = T)
 
+# 1.478 secs
 boost.big <- gbm(formula = price ~ ., distribution = "gaussian", 
                  data = cars.train, n.trees = boost.ntree, 
                  interaction.depth = boost.indepth,
@@ -307,12 +347,46 @@ cat("best model:", names(predict.val)[which.min(rmse.val)], "\n")
 
 rmse.val <- rmse.val[order(rmse.val)]
 print(rmse.val)
-model.names <- c("Boosting Tree (big)", "Random Forest (big)", "LASSO (big)", "Bagging (big)", "Regression Tree (big)", "Pruned Regression Tree (big)", "Boosting Tree (small)", "Bagging (small)", "Regression Tree (small)", "Pruned Regression Tree (small)", "Random Forest (small)")
-df.rmse <- data.frame(models = model.names, 
-                      rmse = rmse.val)
+model.names <- c("Boosting Tree (big)", "Random Forest (big)", "LASSO Regression (big)", 
+                 "Bagging (big)", "Regression Tree (big)", "Pruned Regression Tree (big)", 
+                 "Boosting Tree (small)", "Bagging (small)", "Regression Tree (small)", 
+                 "Pruned Regression Tree (small)", "Random Forest (small)")
+df.rmse <- data.frame(models = model.names, rmse = rmse.val)
 
 ExportTable(table = df.rmse, file = "rmse_comp", 
             caption = "Comparison of RMSE for Various Models", 
-            colnames = c("Model", "OOS RMSE (validate)"), include.rownames = F)
+            colnames = c("Model", "RMSE"), include.rownames = F)
 
+# Try the 'best' model on the test set
 
+df.rmse.test <- data.frame(models = c("Boosting Tree", "Random Forest", 
+                                      "LASSO Regression"), 
+                           rmse.val = rmse.val[1:3], rmse.test = rep(NA, 3))
+rownames(df.rmse.test) <- NULL
+
+# Boosting
+boost.best <- gbm(formula = price ~ ., distribution = "gaussian", 
+                  data = rbind(cars.train, cars.val), 
+                  n.trees = boost.ntree, 
+                  interaction.depth = boost.indepth,
+                  shrinkage = boost.shrink, verbose = T)
+boost.yhat <- predict(boost.best, newdata = cars.test, n.trees = boost.ntree)
+df.rmse.test$rmse.test[1] <- mean(sqrt((cars.test$price - boost.yhat)^2))
+
+# Random forest
+rf.best <- randomForest(price ~ ., data = rbind(cars.train, cars.val), 
+                        do.trace = 20, ntree = 250)
+rf.yhat <- predict(rf.best, newdata = cars.test)
+df.rmse.test$rmse.test[2] <- mean(sqrt((cars.test$price - rf.yhat)^2))
+
+# LASSO
+lin.yhat <- unlist(exp(doGamlr(
+  log(price) ~ ., 
+  rbind(cars.train, cars.val), cars.test, "lin_reg_best",
+  lambda.min=exp(-9))))
+df.rmse.test$rmse.test[3] <- mean(sqrt((cars.test$price - lin.yhat)^2))
+
+ExportTable(table = df.rmse.test, file = "rmse_test", 
+            caption = "OOS RMSE for Top Three Models", 
+            colnames = c("Model", "RMSE (Validate)", "RMSE (Test)"), 
+            include.rownames = F)
