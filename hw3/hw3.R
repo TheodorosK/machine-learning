@@ -29,7 +29,8 @@ cars.test <- cars.partitioned[[3]]
 
 FitAndPruneTree <- function(form, data) {
   
-  tree <- rpart(form = form, data = data)
+  tree <- rpart(form = form, data = data, 
+                control = rpart.control(minsplit = 5, cp = 0.0005))
   
   idx.best = which.min(tree$cptable[, "xerror"])
   cp.best <- tree$cptable[idx.best, "CP"]
@@ -47,6 +48,17 @@ tree.small.prune <- trees.small[2][[1]]
 trees.big <- FitAndPruneTree(price ~ ., cars.train)
 tree.big <- trees.big[1][[1]]
 tree.big.prune <- trees.big[2][[1]]
+
+# Visualize
+require(rpart.plot)
+
+PlotSetup("tree_small")
+rpart.plot(tree.small)
+PlotDone()
+
+PlotSetup("tree_small_prune")
+rpart.plot(tree.small.prune)
+PlotDone()
 
 # Bagging MP ---------------------------------------------------------------------
 # run an experiment to see if predictive accuracy increases with B
