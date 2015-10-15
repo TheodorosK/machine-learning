@@ -207,28 +207,29 @@ boost.ntree = 80
 boost.indepth = 9
 boost.shrink = 0.16
 
+seq.ntree <- seq(20, 150, 10)
+seq.indepth <- seq(5, 15)
+seq.shrink <- seq(0.01, 0.5, 0.02)
+
 export.list = c("cars.train", "cars.val", "seq.ntree", "seq.indepth", "seq.shrink",
                 "boost.ntree", "boost.indepth", "boost.shrink")
 
-# # What is the optimal n.trees?
-# # This is so noisy!!!
-# seq.ntree <- seq(20, 150, 10)
-# test.ntree <- TestGBM(export.list, "n.trees", seq.ntree, nTrials = 1000)
-# cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
-# PlotSetup("histo_ntree")
-# hist(test.ntree)
-# PlotDone()
-# 
-# # What is the optimal interaciton.depth?
-# seq.indepth <- seq(5, 15)
+# What is the optimal n.trees?
+# This is so noisy!!!
+test.ntree <- LoadCachedOrRun(TestGBM, export.list, "n.trees", seq.ntree, nTrials = 1000)
+cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
+PlotSetup("histo_ntree")
+hist(test.ntree)
+PlotDone()
+
+# What is the optimal interaciton.depth?
 # test.indepth <- TestGBM(export.list, "interaction.depth", seq.indepth, nTrials = 1000)
 # cat(sprintf("the \"optimal\" value of interaction.depth is %.1f", mean(test.indepth)))
 # PlotSetup("histo_indepth")
 # hist(test.indepth)
 # PlotDone()
-# 
-# # What is the optimal shrinkage parameter?
-# seq.shrink <- seq(0.01, 0.5, 0.02)
+
+# What is the optimal shrinkage parameter?
 # test.shrink <- TestGBM(export.list, "shrinkage", seq.shrink, nTrials = 1000)
 # cat(sprintf("the \"optimal\" value of shrinkage param is %.1f", mean(test.shrink)))
 # PlotSetup("histo_shrink")
