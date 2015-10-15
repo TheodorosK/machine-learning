@@ -27,11 +27,25 @@ We will build a series of models that can predict the selling price of a used ca
 
 \section{Regression Trees}
 
-We begin by fitting a simple regression tree to the data. We use the \texttt{rpart} package on the training data set discussed above. The \texttt{rpart} method returns an object that includes a matrix of the optimal tree prunings. We use this matrix to find the tree complexity parameter that produces the lowest error and prune the tree to this level of complexity.
+We begin by fitting a simple regression tree to the data. We use the \texttt{rpart} package on the training data set discussed above. The \texttt{rpart} method returns an object that includes a matrix of the optimal tree prunings. We use this matrix to find the tree complexity parameter that produces the lowest error and prune the tree to this level of complexity. The original tree and pruned tree for a small model (i.e. price on mileage) are depicted in \cref{fig:tree_small} and \cref{fig:tree_small_prune}, and it is clear that the pruned model has fewer end nodes than the original model.
 
-Because the default options on \texttt{rpart} choose a very simple tree, we lower the minimum split (i.e. smallest number of observations in a node in order for it to be split) from 20 to five, and we lower the complexity parameter from 1/100 to 5/10,000 (which effectively builds more splits into the tree).
+Because the default options on \texttt{rpart} choose a very simple tree, we lower the minimum split (i.e. smallest number of observations in a node in order for it to be split) from 20 to five, and we lower the complexity parameter from 1/100 to 5/10,000 (which effectively builds more splits into the tree). This produces a more complex model, but one that still does not perform well out-of-sample, especially in comparison to the other algorithms discussed below.
 
-
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{0.49\textwidth}
+ \caption{Small Regression Tree}
+ \includegraphics[width=\textwidth]{tree_small.pdf}
+ \label{fig:tree_small}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.49\textwidth}
+ \caption{Small Regression Tree (Pruned)}
+ \includegraphics[width=\textwidth]{tree_small_prune.pdf}
+ \label{fig:tree_small_prune}
+  \end{subfigure}
+ \caption{Comparison of Small Regression Tree Models}
+\end{figure}
 
 \section{Bagging}
 
@@ -51,7 +65,7 @@ Ultimately, the bagging algorithm does not perform very well relative to the boo
 
 In this section, we try to predict car price with a random forest algorithm. The main difference between the algorithm here and that in the prior section is that for each tree, instead of estimating based on the entire set of covariates, we estimate only on a subset $m$ of covariates. This makes the algorithm run more quickly and introduces another layer of randomness into our predictions. 
 
-We chose a value of $m=3$, which produced the best set of out-of-sample RMSE values. We also chose to stop the algorithm after 250 trees, as the predictive performance (measured by out-of-bag RMSE) fails to improve after this point (see \cref{fig:rf_oob_mse}). In order to speed up performance even more, we can also divide our intended number of trees (250) by the number of processors available (eight, in this case). We then build each small forest on a separate processor and combine the eight forests at the end into one larger forest and use this final combined forest to predict.
+We chose a value of $m=3$, which produced the best set of out-of-sample RMSE values. We also chose to stop the algorithm after 250 trees, as the predictive performance (measured by out-of-bag RMSE) fails to improve after this point (see \cref{fig:rf_oob_mse}). In order to speed up performance even more, we can also divide our intended number of trees (250) by the number of processors available (eight, in this case). We then build each small forest on a separate processor and combine the eight forests at the end into one larger forest and use this final combined forest to predict car price.
 
 The random forest algorithm ends up performing very well, nearly beating the best-in-class performance of the boosting tree.
 
@@ -70,7 +84,9 @@ The random forest algorithm ends up performing very well, nearly beating the bes
 
 In \cref{tab:rmse_comp}, we list the out-of-sample RMSE of each model on the validate data set. The models denoted by ``large'' are those trained on the entire set of covariates; those denoted by ``small'' are trained only on the mileage series.
 
-The best performing model is the large boosting tree model, followed very closely by the large random forest model and the large LASSO regression model. All three models perform similarly, although the boosting tree model was the most difficult to tune.
+The best performing model is the large boosting tree model, followed very closely by the large random forest model and the large LASSO regression model. All three models perform similarly, although the boosting tree model was the most difficult to tune. In a production environment, the deciding which model is best would depend not only on performance but on computational expense. Because the three models mentioned above all perform so closely, we will test all three on the out-of-sample test set and see how they perform.
+
+The results of the out-of-sample test are shown in \cref{}.
 
 \input{rmse_comp}
 
