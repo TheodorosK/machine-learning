@@ -167,21 +167,43 @@ TestGBM <- function(export.list, test.param, test.params, nTrials) {
       
     } # end for loop
     
-    return(test.params[which.min(rmse)])
+    return(rmse)
     
   })
   sfStop()
-  
-  return(unlist(boost.test))
-  
+
+  return(data.frame(
+    test.params = test.params,
+    rmse.trial = do.call(cbind, boost.test)))
 }
 
-boost.ntree = 80
-boost.indepth = 9
-boost.shrink = 0.16
+PlotGBMParamSweep <- function(data, param.name) {
+  rmse.means <- data.frame(param = data[,1], 
+                           rmse = rowMeans(data[,-1]))
+  rmse.sd <- apply(data[,-1], 1, sd)
+  rmse.min <- rmse.means$param[which.min(rmse.means$rmse)]
+  rmse.1se <- rmse.means$param[min(which(rmse.means$rmse < (
+    min(rmse.means$rmse) + rmse.sd[which.min(rmse.means$rmse)])))]
+  sel <- data.frame(param = c("min", "1se"),
+                    value = c(rmse.min, rmse.1se))
+  sel$param <- sprintf("%s @%.2f", sel$param, sel$value)
+  require(ggplot2)
+  require(reshape2)
+  g <- ggplot(data=rmse.means, aes(x=param, y=rmse)) + geom_point(size=3) + geom_line(lwd=1.5) +
+    geom_vline(data=melt(sel, id.vars="param"), aes(xintercept=value, linetype=param), show_guide = T) +
+    labs(x=param.name, y="RMSE") + theme_bw() + 
+    guides(linetype = guide_legend(title = "Selection\nCriteria")) +
+    theme(legend.position = c(0.85, 0.8))
+  plot(g)
+}
+
+
+boost.ntree = 50
+boost.indepth = 16
+boost.shrink = 0.11
 
 seq.ntree <- seq(20, 150, 10)
-seq.indepth <- seq(5, 15)
+seq.indepth <- seq(2, 28)
 seq.shrink <- seq(0.01, 0.5, 0.02)
 
 export.list = c("cars.train", "cars.val", "seq.ntree", "seq.indepth", "seq.shrink",
@@ -189,21 +211,36 @@ export.list = c("cars.train", "cars.val", "seq.ntree", "seq.indepth", "seq.shrin
 
 # What is the optimal n.trees?
 # This is so noisy!!!
-test.ntree <- LoadCachedOrRun(TestGBM, export.list, "n.trees", seq.ntree, nTrials = 1000)
-cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
-PlotSetup("histo_ntree")
-hist(test.ntree)
+test.ntree <- LoadCachedOrRun(TestGBM, export.list, "n.trees", 
+                              seq.ntree, nTrials = 100)
+PlotSetup("gbm_ntree")
+PlotGBMParamSweep(test.ntree, "# of Trees")
 PlotDone()
 
+# cat(sprintf("the \"optimal\" value of n.trees is %.1f", mean(test.ntree)))
+# PlotSetup("histo_ntree")
+# hist(test.ntree)
+# PlotDone()
+
 # What is the optimal interaciton.depth?
-# test.indepth <- TestGBM(export.list, "interaction.depth", seq.indepth, nTrials = 1000)
+test.indepth <- LoadCachedOrRun(TestGBM, export.list, "interaction.depth", 
+                                seq.indepth, nTrials = 100)
+PlotSetup("gbm_indepth")
+PlotGBMParamSweep(test.indepth, "Interaction Depth")
+PlotDone()
+
 # cat(sprintf("the \"optimal\" value of interaction.depth is %.1f", mean(test.indepth)))
 # PlotSetup("histo_indepth")
 # hist(test.indepth)
 # PlotDone()
 
 # What is the optimal shrinkage parameter?
-# test.shrink <- TestGBM(export.list, "shrinkage", seq.shrink, nTrials = 1000)
+test.shrink <- LoadCachedOrRun(TestGBM, export.list, "shrinkage", 
+                               seq.shrink, nTrials = 100)
+PlotSetup("gbm_shrink")
+PlotGBMParamSweep(test.shrink, "Crush Factor")
+PlotDone()
+
 # cat(sprintf("the \"optimal\" value of shrinkage param is %.1f", mean(test.shrink)))
 # PlotSetup("histo_shrink")
 # hist(test.shrink)
