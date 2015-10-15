@@ -21,7 +21,7 @@ University of Chicago Booth School of Business}
 
 \section{Data}
 
-For this exercise, our data set contains the sale price and the observable characteristics for a sample of 20,000 used cars. We break this data into three subsets: 50 percent of data will be our training set that will be used to train/tune our models ($n=10,031$); 25 percent will be our validation data set which we will use to evaluate model performance ($n=5,016$); and 25 percent will be our test set which we will use to evaluate out-of-sample performance of our best model ($n=5,016$).
+For this exercise, our data set contains the sale price and the observable characteristics for a sample of 20,000 used cars. We randomly sampled it to break this data into three subsets: 50 percent of data will be our training set that will be used to train/tune our models ($n=10,031$); 25 percent will be our validation data set which we will use to evaluate model performance ($n=5,016$); and 25 percent will be our test set which we will use to evaluate out-of-sample performance of our best model ($n=5,016$).
 
 We will build a series of models that can predict the selling price of a used car given its observable characteristics. The models and techniques we will use are: (1) regression trees, (2) bagging, (3) random forests, and (4) boosting trees.
 
@@ -53,7 +53,7 @@ In this section, we use an aggregate bootstrap technique to predict used car sal
 \begin{itemize}
 \item For a given number of trials $T$:
 \begin{itemize}
-\item Select a bootstrap sample from the data and fit a large regression tree on this sample (in this case we take large to mean a tree that is not pruned;
+\item Select a bootstrap sample from the data and fit a large regression tree on this sample (in this case we take large to mean a tree that is not pruned);
 \item Use the large tree to make a prediction for expected price;
 \end{itemize}
 \item Take an average of the predicted price across all trials.
@@ -63,9 +63,9 @@ Ultimately, the bagging algorithm does not perform very well relative to the boo
 
 \section{Random Forest}
 
-In this section, we try to predict car price with a random forest algorithm. The main difference between the algorithm here and that in the prior section is that for each tree, instead of estimating based on the entire set of covariates, we estimate only on a subset $m$ of covariates. This makes the algorithm run more quickly and introduces another layer of randomness into our predictions. 
+In this section, we try to predict car price with a random forest algorithm. The main difference between the algorithm here and that in the prior section is that for each tree, instead of estimating based on the entire set of covariates, we estimate only on a subset $m$ of covariates. This makes the algorithm train more quickly and introduces another layer of randomness into our predictions. 
 
-We chose a value of $m=3$, which produced the best set of out-of-sample RMSE values. We also chose to stop the algorithm after 250 trees, as the predictive performance (measured by out-of-bag RMSE) fails to improve after this point (see \cref{fig:rf_oob_mse}). In order to speed up performance even more, we can also divide our intended number of trees (250) by the number of processors available (eight, in this case). We then build each small forest on a separate processor and combine the eight forests at the end into one larger forest and use this final combined forest to predict car price.
+We chose a value of $m=3$, which produced the best set of out-of-sample RMSE values. We also chose to stop the algorithm after 250 trees, as the predictive performance (measured by out-of-bag RMSE) fails to improve after this point (see \cref{fig:rf_oob_mse}). In order to speed up performance even more, we can also divide our intended number of trees (250) by the number of processors available (eight, in this case). We then build each small forest on a separate processor, combine the eight forests at the end into one larger forest and use this final combined forest to predict car price.
 
 The random forest algorithm ends up performing very well, nearly beating the best-in-class performance of the boosting tree.
 
@@ -78,17 +78,20 @@ The random forest algorithm ends up performing very well, nearly beating the bes
 
 \section{Boosting Trees}
 
+
 \section{LASSO Regression}
 
 \section{Comparison and Out-of-Sample Test}
 
-In \cref{tab:rmse_comp}, we list the out-of-sample RMSE of each model on the validate data set. The models denoted by ``large'' are those trained on the entire set of covariates; those denoted by ``small'' are trained only on the mileage series.
+In \cref{tab:rmse_comp}, we list the out-of-sample RMSE of each model for the validate data set. The models denoted by ``large'' are those trained on the entire set of covariates; those denoted by ``small'' are trained only on the mileage series.
 
-The best performing model is the large boosting tree model, followed very closely by the large random forest model and the large LASSO regression model. All three models perform similarly, although the boosting tree model was the most difficult to tune. In a production environment, the deciding which model is best would depend not only on performance but on computational expense. Because the three models mentioned above all perform so closely, we will test all three on the out-of-sample test set and see how they perform.
+The best performing model is the large boosting tree model, followed very closely by the large random forest model and the large LASSO regression model. All three models perform similarly, although the boosting tree model was the most difficult to tune. In a production environment, deciding which model is best would depend not only on performance but on computational expense. Because the three models mentioned above all perform so closely, we will test all three on the out-of-sample test set and see how they perform.
 
-The results of the out-of-sample test are shown in \cref{}.
+The results of the out-of-sample test are shown in \cref{tab:rmse_test}. Two things are clear. The first is that the \textit{true} out-of-sample RMSE for all three models is very close to our expected out-of-sample RMSE based on the validation data set. The second is that the order of performance of the models is now different: the random forest actually predicted better in the true out-of-sample test than the boosting tree did. This suggests that at the margin, we can differentiate what is the ``best'' model by other factors like tractability and computational expense, and out-of-sample performance will not suffer much as a result.
 
 \input{rmse_comp}
+
+\input{rmse_test}
 
 \end{document}
 
