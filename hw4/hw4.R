@@ -1,5 +1,11 @@
 rm(list=ls())
+
 source('../utils/source_me.R', chdir = T)
+require(parallel)
+require(snowfall)
+require(caret)
+
+sfInit(cpus=detectCores(), parallel=T)
 
 LoadData <- function(what) {
   data.dir <- "../data/kdd_2009"
@@ -59,15 +65,38 @@ set.seed(0x0FedBeef)
 dat.partitioned <- PartitionDataset(c(0.6, 0.20, 0.20), dat.clean)
 dat.subsampled <- SamplePartitionedDataset(dat.partitioned, 0.05)
 
+# Oversample Training Data ----
+OversampleData <- function(data, column) {
+  partitions <- vector("list", length(data))
+  for (i in 1:length(data)) {
+    pdat <- data[[i]]
+    
+    pdat.table <- table(pdat[,column])
+    rare.event.count <- sum(pdat[,column] == names(which.min(pdat.table)))
+    
+    dat.oversampled = NULL
+    for (l in levels(pdat[,column])) {
+      ldat <- pdat[pdat[,column] == l,]
+      dat.oversampled <- 
+        rbind(dat.oversampled, ldat[sample(1:nrow(ldat), rare.event.count),])
+    }
+    partitions[[i]] <- dat.oversampled
+  }
+  return(partitions)
+}
+
+dat.oversampled <- OversampleData(dat.partitioned, "y") 
+
 # Importance Feature Selection ----
 require(randomForest)
-imp.rf.model <- randomForest(y ~ ., data=dat.subsampled[[1]], importance=T)
+imp.rf.model <- randomForest(y ~ ., data=dat.oversampled[[1]], 
+                             do.trace=T, importance=T)
 
 # Should we use absolute value here?
 imp.rf.model.imp <- importance(imp.rf.model, type=1)
 imp.features <- rownames(imp.rf.model.imp)[
   order(imp.rf.model.imp, decreasing = T)]
-imp.features <- imp.features[1:10]
+imp.features <- imp.features[1:30]
 
 varImpPlot(imp.rf.model)
 
@@ -79,7 +108,11 @@ ExtractFeatures <- function(data, features) {
   }
   return(data)
 } 
-dat.select <- ExtractFeatures(dat.partitioned, c(imp.features, "y"))
+dat.select <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
 
 # Random Forest Model ----
 rf.model <- randomForest(y ~ ., data=dat.select[[1]], do.trace=T, ntree=500, mtry=10)
+rf.model.predict <- predict(rf.model, newdata=dat.partitioned[[2]], type="response")
+
+confusionMatrix(rf.model.predict, dat.partitioned[[2]][,"y"])
+rf.model.predict
