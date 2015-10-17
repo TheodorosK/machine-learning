@@ -4,8 +4,9 @@ source('../utils/source_me.R', chdir = T)
 LoadData <- function(what) {
   data.dir <- "../data/kdd_2009"
   prefix <- "orange_small_train"
-  y <- read.delim(file.path(data.dir, sprintf("%s_%s.labels.txt", prefix, what)), 
-                  col.names="y", header = F)
+  y <- read.delim(file.path(
+    data.dir, sprintf("%s_%s.labels.txt", prefix, what)), 
+    col.names="y", header = F)
   x <- read.delim(file.path(data.dir, sprintf("%s.data.gz", prefix)))
   return(cbind(y=as.factor(unlist(y)), x))
 }
@@ -32,7 +33,8 @@ CleanData <- function(dat, na.exclude.threshold.pcnt = 0.95,
     dat[sapply(dat[,c], is.na), c] = mean(dat[,c], na.rm = T)
   }
   if (sum(is.na(dat)) != 0) {
-    stop(sprintf("Expected 0 NAs at this point, but found %d", sum(is.na(dat))))
+    stop(sprintf("Expected 0 NAs at this point, but found %d", 
+                 sum(is.na(dat))))
   }
   
   # Find the columns with many levels
@@ -52,7 +54,9 @@ CleanData <- function(dat, na.exclude.threshold.pcnt = 0.95,
 dat.clean <- CleanData(dat.dirty)
 
 # Partition ----
-dat.partitioned <- PartitionDataset(c(0.6, 0.20, 0.20), dat.clean)
+dat.partitioned <- PartitionDataset(
+  c(0.6, 0.20, 0.20), dat.clean, subsample.amount = 0.05)
 dat.train <- dat.partitioned[[1]]
 dat.valid <- dat.partitioned[[2]]
 # dat.test <- dat.partitioned[[3]]
+
