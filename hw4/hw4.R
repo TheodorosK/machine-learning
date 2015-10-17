@@ -4,8 +4,11 @@ source('../utils/source_me.R', chdir = T)
 require(parallel)
 require(snowfall)
 require(caret)
+require(foreach)
+require(doSNOW)
 
 sfInit(cpus=detectCores(), parallel=T)
+registerDoSNOW(sfGetCluster())
 
 LoadData <- function(what) {
   data.dir <- "../data/kdd_2009"
@@ -89,8 +92,13 @@ dat.oversampled <- OversampleData(dat.partitioned, "y")
 
 # Importance Feature Selection ----
 require(randomForest)
-imp.rf.model <- randomForest(y ~ ., data=dat.oversampled[[1]], 
-                             do.trace=T, importance=T)
+if (sfParallel()) {
+  sfRemoveAll()
+  sfExport("dat.oversampled")
+}
+imp.rf.model <- foreach(ntree=rep(500, sfCpus()), .combine=combine, 
+                        .packages='randomForest') %dopar%
+  randomForest(y ~ ., data=dat.oversampled[[1]], do.trace=T, importance=T)
 
 # Should we use absolute value here?
 imp.rf.model.imp <- importance(imp.rf.model, type=1)
@@ -111,7 +119,14 @@ ExtractFeatures <- function(data, features) {
 dat.select <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
 
 # Random Forest Model ----
-rf.model <- randomForest(y ~ ., data=dat.select[[1]], do.trace=T, ntree=500, mtry=10)
+if (sfParallel()) {
+  sfRemoveAll()
+  sfExport("dat.select")
+}
+rf.model <- foreach(ntree=rep(1000, sfCpus()), .combine=combine, 
+                    .packages='randomForest') %dopar%
+  randomForest(y ~ ., data=dat.select[[1]], ntree=ntree) 
+
 rf.model.predict <- predict(rf.model, newdata=dat.partitioned[[2]], type="response")
 
 confusionMatrix(rf.model.predict, dat.partitioned[[2]][,"y"])
