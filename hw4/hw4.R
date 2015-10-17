@@ -13,12 +13,12 @@ LoadData <- function(what) {
 dat.dirty <- LoadData("churn")
 
 # Clean Data ----
-CleanData <- function(dat, na.exclude.threshold.pcnt = 0.95, 
-                      many.factor.threshold = 20,
+CleanData <- function(dat, na.exclude.threshold.pcnt = 1, 
+                      many.factor.threshold = 50,
                       level.thresholds = data.frame(
                         name = c("low", "medium", "high"),
-                        lower = c(0, 250, 500),
-                        upper = c(249, 499, 999))) {
+                        lower = c(0,     0.005, 0.010),
+                        upper = c(0.005, 0.010, 0.020))) {
   # Remove Columns with all NAs
   na.count.by.var <- apply(dat, 2, function(x) sum(is.na(x)))
   all.na.vars <- which(na.count.by.var/nrow(dat) >= na.exclude.threshold.pcnt)
@@ -40,10 +40,11 @@ CleanData <- function(dat, na.exclude.threshold.pcnt = 0.95,
   # Find the columns with many levels
   for (c in which(sapply(dat, nlevels) > many.factor.threshold)) {
     before.nlevels <- nlevels(dat[,c])
-    level.count <- table(dat[,c])     
     for (i in 1:nrow(level.thresholds)) {
-      to.replace <- level.count >= level.thresholds[i, "lower"] &
-        level.count <= level.thresholds[i, "upper"]
+      level.count <- table(dat[,c])     
+      to.replace <-
+        (level.count >= (level.thresholds[i, "lower"]*nrow(dat))) &
+        (level.count <  (level.thresholds[i, "upper"]*nrow(dat)))
       levels(dat[,c])[to.replace] <- as.character(level.thresholds[i, "name"])
     }
     print(sprintf("Column %d - #levels before=%6d, after=%6d", 
@@ -53,10 +54,32 @@ CleanData <- function(dat, na.exclude.threshold.pcnt = 0.95,
 }
 dat.clean <- CleanData(dat.dirty)
 
-# Partition ----
-dat.partitioned <- PartitionDataset(
-  c(0.6, 0.20, 0.20), dat.clean, subsample.amount = 0.05)
-dat.train <- dat.partitioned[[1]]
-dat.valid <- dat.partitioned[[2]]
-# dat.test <- dat.partitioned[[3]]
+# Partition & Subsampled ----
+set.seed(0x0FedBeef)
+dat.partitioned <- PartitionDataset(c(0.6, 0.20, 0.20), dat.clean)
+dat.subsampled <- SamplePartitionedDataset(dat.partitioned, 0.05)
 
+# Importance Feature Selection ----
+require(randomForest)
+imp.rf.model <- randomForest(y ~ ., data=dat.subsampled[[1]], importance=T)
+
+# Should we use absolute value here?
+imp.rf.model.imp <- importance(imp.rf.model, type=1)
+imp.features <- rownames(imp.rf.model.imp)[
+  order(imp.rf.model.imp, decreasing = T)]
+imp.features <- imp.features[1:10]
+
+varImpPlot(imp.rf.model)
+
+# Extract Important Features ----
+ExtractFeatures <- function(data, features) {
+  for (i in 1:length(data)) {
+    p.dat <- data[[i]]
+    data[[i]] <- p.dat[,colnames(p.dat) %in% features]
+  }
+  return(data)
+} 
+dat.select <- ExtractFeatures(dat.partitioned, c(imp.features, "y"))
+
+# Random Forest Model ----
+rf.model <- randomForest(y ~ ., data=dat.select[[1]], do.trace=T, ntree=500, mtry=10)

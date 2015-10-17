@@ -1,10 +1,6 @@
-PartitionDataset <- function(part.sizes, data, reorder = T, subsample.amount = NULL) {
+PartitionDataset <- function(part.sizes, data, reorder = T) {
   if (sum(part.sizes) != 1) {
     stop(sprintf("part.sizes must sum to 1: %f", sum(part.sizes)))
-  }
-  
-  if (!is.null(subsample.amount)) {
-    data <- data[sample(1:nrow(data), nrow(data)*subsample.amount),]
   }
   
   # Reorder the data.
@@ -24,4 +20,12 @@ PartitionDataset <- function(part.sizes, data, reorder = T, subsample.amount = N
     part.i <- part.i + 1
   }
   return(partitions)
+}
+
+SamplePartitionedDataset <- function(data, subsample.amount) {
+  for (i in 1:length(data)) {
+    p.dat <- data[[i]]
+    data[[i]] <- p.dat[sample(1:nrow(p.dat), nrow(p.dat)*subsample.amount),]
+  }
+  return(data)
 }
