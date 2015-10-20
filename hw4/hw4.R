@@ -59,6 +59,10 @@ CleanData <- function(dat, na.exclude.threshold.pcnt = 1,
     print(sprintf("Column %d - #levels before=%6d, after=%6d", 
                   c, before.nlevels, nlevels(dat[,c])))
   }
+  
+  # Col 187 is all "low"
+  dat <- dat[, -c(187)]
+  
   return(dat)
 }
 dat.clean <- CleanData(dat.dirty)
@@ -131,3 +135,29 @@ rf.model.predict <- predict(rf.model, newdata=dat.partitioned[[2]], type="respon
 
 confusionMatrix(rf.model.predict, dat.partitioned[[2]][,"y"])
 rf.model.predict
+
+# In honor of MT try this with a LASSO ----
+
+library(gamlr)
+
+GetLassoVars <- function(dat, gamma = 0) {
+  names(dat) <- c("y", sapply(names(dat)[-1], function(name) {
+    paste("Var", sprintf("%03d", as.numeric(substr(name, 4, nchar(name)))), sep = "")
+  }))
+  
+  X <- model.matrix(y ~ ., dat)[, -1]
+  Y <- dat[, 1]
+  lin <- gamlr(X, Y, verb = T, family = "binomial", gamma = gamma)
+  
+  B <- drop(coef(lin))[-1]
+  B <- B[B != 0]
+  
+  sig.coefs <- sapply(names(B), function(name) {
+    num <- as.numeric(substr(name, 4, 6))
+    paste("Var", num, sep = "")
+  })
+  return(unique(sig.coefs))
+}
+
+lasso.coefs <- GetLassoVars(dat.oversampled[[1]], gamma = 5)
+length(lasso.coefs)
