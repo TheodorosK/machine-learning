@@ -152,12 +152,37 @@ GetLassoVars <- function(dat, gamma = 0) {
   B <- drop(coef(lin))[-1]
   B <- B[B != 0]
   
-  sig.coefs <- sapply(names(B), function(name) {
+  sig.vars <- sapply(names(B), function(name) {
     num <- as.numeric(substr(name, 4, 6))
     paste("Var", num, sep = "")
   })
-  return(unique(sig.coefs))
+  sig.vars <- unique(sig.vars)
+  
+  return(unique(sig.vars))
 }
 
-lasso.coefs <- GetLassoVars(dat.oversampled[[1]], gamma = 5)
-length(lasso.coefs)
+lasso.vars <- GetLassoVars(dat.oversampled[[1]], gamma = 5)
+length(lasso.vars)
+
+# Principal Components Analysis ----
+
+GetPCAVars <- function(dat, npcs = 10) {
+  X <- model.matrix(y ~ ., dat.oversampled[[1]])[, -1]
+  X <- X[, sapply(1:ncol(X), function(c) { var(X[, c]) != 0 })] # take out cols w/ var = 0
+  
+  varpc <- prcomp(X, scale = T)
+
+  # varpc$sdev     : the standard deviations of the principal components
+  # varpc$rotation : the matrix of variable loadings
+  # varpc$x        : the value of the rotated data -- the Principal Components
+  
+  # From BD HW #7, this is how to make a scree plot (same as screeplot above)
+  # Nice to go under the hood if we want to use ggplot for this
+  # cc <- cov(scale(X))
+  # eig <- eigen(cc)
+  # barplot(sort(eig$values,decreasing=T))
+  
+  return(varpc$x[, 1:npcs])
+}
+
+pca.vars <- GetPCAVars(dat.oversampled[[1]])
