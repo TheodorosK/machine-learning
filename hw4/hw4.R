@@ -159,5 +159,5 @@ GetLassoVars <- function(dat, gamma = 0) {
   return(unique(sig.coefs))
 }
 
-lasso.coefs <- GetLassoVars(dat.oversampled[[1]], gamma = 5)
+lasso.coefs <- GetLassoVars(dat.oversampled[[1]], gamma = 10)
 length(lasso.coefs)
