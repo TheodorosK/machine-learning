@@ -94,6 +94,10 @@ OversampleData <- function(data, column) {
 
 dat.oversampled <- OversampleData(dat.partitioned, "y") 
 
+###############################################################################
+## DIMENSION REDUCTION
+###############################################################################
+
 # Importance Feature Selection ----
 require(randomForest)
 if (sfParallel()) {
@@ -122,20 +126,6 @@ ExtractFeatures <- function(data, features) {
 } 
 dat.select <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
 
-# Random Forest Model ----
-if (sfParallel()) {
-  sfRemoveAll()
-  sfExport("dat.select")
-}
-rf.model <- foreach(ntree=rep(1000, sfCpus()), .combine=combine, 
-                    .packages='randomForest') %dopar%
-  randomForest(y ~ ., data=dat.select[[1]], ntree=ntree) 
-
-rf.model.predict <- predict(rf.model, newdata=dat.partitioned[[2]], type="response")
-
-confusionMatrix(rf.model.predict, dat.partitioned[[2]][,"y"])
-rf.model.predict
-
 # In honor of MT try this with a LASSO ----
 
 library(gamlr)
@@ -147,6 +137,7 @@ GetLassoVars <- function(dat, gamma = 0) {
   
   X <- model.matrix(y ~ ., dat)[, -1]
   Y <- dat[, 1]
+  levels(Y)[levels(Y) == -1] <- 0
   lin <- gamlr(X, Y, verb = T, family = "binomial", gamma = gamma)
   
   B <- drop(coef(lin))[-1]
@@ -161,7 +152,7 @@ GetLassoVars <- function(dat, gamma = 0) {
   return(unique(sig.vars))
 }
 
-lasso.vars <- GetLassoVars(dat.oversampled[[1]], gamma = 5)
+lasso.vars <- GetLassoVars(dat.oversampled[[1]], gamma = 10)
 length(lasso.vars)
 
 # Principal Components Analysis ----
@@ -186,3 +177,30 @@ GetPCAVars <- function(dat, npcs = 10) {
 }
 
 pca.vars <- GetPCAVars(dat.oversampled[[1]])
+
+###############################################################################
+## PREDICTION
+###############################################################################
+
+dat.select.rf <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
+dat.select.lasso <- ExtractFeatures(dat.oversampled, c(lasso.vars, "y"))
+
+# Random Forest Model ----
+PredictRF <- function(dat.train, dat.validate) {
+  if (sfParallel()) {
+    sfRemoveAll()
+    sfExport("dat.train")
+  }
+  rf.model <- foreach(ntree=rep(1000, sfCpus()), .combine=combine, 
+                      .packages='randomForest') %dopar%
+    randomForest(y ~ ., data=dat.train, ntree=ntree) 
+  
+  rf.model.predict <- predict(rf.model, newdata=dat.validate, type="response")
+  
+  conmat <- confusionMatrix(rf.model.predict, dat.validate[,"y"])
+  
+  return(list(rf.model.predict, conmat))
+}
+
+pred.rf.rf <- PredictRF(dat.select.rf[[1]], dat.partitioned[[2]])
+pred.rf.lasso <- PredictRF(dat.select.lasso[[1]], dat.partitioned[[2]])
