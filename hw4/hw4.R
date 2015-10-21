@@ -158,7 +158,7 @@ length(lasso.vars)
 # Principal Components Analysis ----
 
 GetPCAVars <- function(dat, npcs = 10) {
-  X <- model.matrix(y ~ ., dat.oversampled[[1]])[, -1]
+  X <- model.matrix(y ~ ., dat)[, -1]
   X <- X[, sapply(1:ncol(X), function(c) { var(X[, c]) != 0 })] # take out cols w/ var = 0
   
   varpc <- prcomp(X, scale = T)
@@ -176,7 +176,13 @@ GetPCAVars <- function(dat, npcs = 10) {
   return(varpc$x[, 1:npcs])
 }
 
-pca.vars <- GetPCAVars(dat.oversampled[[1]])
+dat.select.pca <- cbind.data.frame(as.factor(dat.oversampled[[1]][, 1]), 
+                        GetPCAVars(dat.oversampled[[1]]))
+names(dat.select.pca)[1] <- "y"
+
+dat.validate.pca <- cbind.data.frame(as.factor(dat.partitioned[[2]][, 1]), 
+                          GetPCAVars(dat.partitioned[[2]]))
+names(dat.validate.pca)[1] <- "y"
 
 ###############################################################################
 ## PREDICTION
@@ -204,3 +210,4 @@ PredictRF <- function(dat.train, dat.validate) {
 
 pred.rf.rf <- PredictRF(dat.select.rf[[1]], dat.partitioned[[2]])
 pred.rf.lasso <- PredictRF(dat.select.lasso[[1]], dat.partitioned[[2]])
+pred.rf.pca <- PredictRF(dat.select.pca, dat.validate.pca)
