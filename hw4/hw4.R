@@ -188,9 +188,6 @@ names(dat.validate.pca)[1] <- "y"
 ## PREDICTION
 ###############################################################################
 
-dat.select.rf <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
-dat.select.lasso <- ExtractFeatures(dat.oversampled, c(lasso.vars, "y"))
-
 # Random Forest Model ----
 PredictRF <- function(dat.train, dat.validate) {
   if (sfParallel()) {
@@ -208,6 +205,26 @@ PredictRF <- function(dat.train, dat.validate) {
   return(list(rf.model.predict, conmat))
 }
 
+dat.select.rf <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
+dat.select.lasso <- ExtractFeatures(dat.oversampled, c(lasso.vars, "y"))
+# PCA data frames are put together in the PCA section (they're more complicated)
+
 pred.rf.rf <- PredictRF(dat.select.rf[[1]], dat.partitioned[[2]])
 pred.rf.lasso <- PredictRF(dat.select.lasso[[1]], dat.partitioned[[2]])
 pred.rf.pca <- PredictRF(dat.select.pca, dat.validate.pca)
+
+# Boosting tree ----
+
+library(gbm)
+
+levels(dat.select.rf[[1]][,1])[levels(dat.select.rf[[1]][,1])=="-1"] <- "0"
+levels(dat.partitioned[[2]][,1])[levels(dat.partitioned[[2]][,1])=="-1"] <- "0"
+
+boost <- gbm(formula = y ~ ., distribution = "bernoulli", 
+             data = dat.select.rf[[1]], n.trees = 50, 
+             interaction.depth = 20,
+             shrinkage = 0.1) 
+
+boost.pred <- predict(boost, newdata = dat.partitioned[[2]], n.trees = 50)
+
+conmat <- confusionMatrix(boost.pred, dat.partitioned[[2]][,"y"])
