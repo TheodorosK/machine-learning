@@ -1,12 +1,15 @@
 rm(list=ls())
 
 source('../utils/source_me.R', chdir = T)
+CreateDefaultPlotOpts(WriteToFile = T)
+
 require(parallel)
 require(snowfall)
 require(gbm)
 require(caret)
 require(foreach)
 require(doSNOW)
+library(doMC)
 
 sfInit(cpus=detectCores(), parallel=T)
 registerDoSNOW(sfGetCluster())
@@ -226,19 +229,59 @@ pred.rf.pca <- PredictRF(dat.select.pca, dat.validate.pca)
 
 # Boosting tree ----
 
-levels(dat.select.rf[[1]][,1])[levels(dat.select.rf[[1]][,1])=="-1"] <- "0"
-levels(dat.partitioned[[2]][,1])[levels(dat.partitioned[[2]][,1])=="-1"] <- "0"
+# levels(dat.select.rf[[1]][,1])[levels(dat.select.rf[[1]][,1])=="-1"] <- "0"
+# levels(dat.partitioned[[2]][,1])[levels(dat.partitioned[[2]][,1])=="-1"] <- "0"
+# 
+# tune.grid <-  expand.grid(interaction.depth = c(1, 3, 5),
+#                         n.trees = c(500, 1000, 1500),
+#                         shrinkage = c(0.01, 0.05, 0.1),
+#                         n.minobsinnode = 20)
+# 
+# X <- dat.select.rf[[1]][,-1]
+# Y <- dat.select.rf[[1]][,1]
+# bst <- train(x = X, y = Y, method = "gbm", tuneGrid = tune.grid)
+# 
+# # Can only test on a data set that contains the same vars as the train data set
+# bst.pred <- predict(bst, newdata = dat.partitioned[[2]][, names(X)])
 
-tune.grid <-  expand.grid(interaction.depth = c(1, 3, 5),
-                        n.trees = c(500, 1000, 1500),
-                        shrinkage = c(0.01, 0.05, 0.1),
-                        n.minobsinnode = 20)
+PredictBoost <- function(dat.train, dat.validate) {
 
-X <- dat.select.rf[[1]][,-1]
-Y <- dat.select.rf[[1]][,1]
-bst <- train(x = X, y = Y, method = "gbm", tuneGrid = tune.grid)
+  levels(dat.train[,1])[levels(dat.train[,1])=="-1"] <- "0"
+  levels(dat.validate[,1])[levels(dat.validate[,1])=="-1"] <- "0"
+  
+  tune.grid <-  expand.grid(interaction.depth = c(1, 5, 9),
+                            n.trees = c(500, 1000, 2000),
+                            shrinkage = c(0.01, 0.05, 0.1),
+                            n.minobsinnode = 20)
+  
+  fit.control <- trainControl(## 10-fold CV
+    method = "repeatedcv",
+    number = 5,
+    allowParallel = T)
+  
+  X <- dat.train[,-1]
+  Y <- dat.train[,1]
+  
+  registerDoMC(cores = detectCores())
+  bst <- train(x = X, y = Y, method = "gbm", tuneGrid = tune.grid, trControl = fit.control)
+  
+  # Can only test on a data set that contains the same vars as the train data set
+  bst.pred <- predict(bst, newdata = dat.validate[, names(X)])
 
-# Can only test on a data set that contains the same vars as the train data set
-bst.pred <- predict(bst, newdata = dat.partitioned[[2]][, names(X)])
+  conmat <- confusionMatrix(bst.pred, dat.validate[,"y"])  
+  
+  return(list(bst, bst.pred, conmat))
+}
 
-confmat <- confusionMatrix(bst.pred, dat.partitioned[[2]][,"y"])
+pred.boost.rf <- PredictBoost(dat.select.rf[[1]], dat.partitioned[[2]])
+pred.boost.lasso <- PredictBoost(dat.select.lasso[[1]], dat.partitioned[[2]])
+pred.boost.pca <- PredictBoost(dat.select.pca, dat.validate.pca)
+
+best.tune <- rbind(c(pred.boost.rf[[1]]$bestTune[1:3], pred.boost.rf[[3]]$overall[1]),
+                   c(pred.boost.lasso[[1]]$bestTune[1:3], pred.boost.lasso[[3]]$overall[1]),
+                   c(pred.boost.pca[[1]]$bestTune[1:3], pred.boost.pca[[3]]$overall[1]))
+best.tune <- cbind(c("Random Forest", "Gamma-Lasso", "PCA"), best.tune)
+
+ExportTable(table=best.tune, file="boost_tune", caption="Optimal Tuning Parameters for Boosting Tree", 
+            colnames=c("Dimension Reduction", "Number of Trees", "Interaction Depth", "Shrinkage", "Accuracy"), 
+            display=c("s", "s", "d", "d", "f", "f"), include.rownames=F)
