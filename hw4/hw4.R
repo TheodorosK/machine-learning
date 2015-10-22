@@ -1,6 +1,7 @@
 rm(list=ls())
 
 source('../utils/source_me.R', chdir = T)
+CreateDefaultPlotOpts()
 require(parallel)
 require(snowfall)
 require(gbm)
@@ -116,7 +117,9 @@ imp.features <- rownames(imp.rf.model.imp)[
   order(imp.rf.model.imp, decreasing = T)]
 imp.features <- imp.features[1:30]
 
-varImpPlot(imp.rf.model)
+PlotSetup("rf_var_sel")
+varImpPlot(imp.rf.model, main = "")
+PlotDone()
 
 # Extract Important Features ----
 ExtractFeatures <- function(data, features) {
