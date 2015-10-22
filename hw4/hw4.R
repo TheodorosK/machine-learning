@@ -263,7 +263,7 @@ PredictBoost <- function(dat.train, dat.validate) {
                             shrinkage = c(0.01, 0.05, 0.1),
                             n.minobsinnode = 20)
   
-  fit.control <- trainControl(## 10-fold CV
+  fit.control <- trainControl(## 5-fold CV
     method = "repeatedcv",
     number = 5,
     allowParallel = T)
@@ -333,5 +333,37 @@ rownames(lin.results) <- c("Random Forest", "Gamma-Lasso", "PCA")
 
 ExportTable(table=lin.results, file = "glm_accuracy", 
             caption="Accuracy for Various GLM Predictions", 
-            colnames=c("Dimension Reduction Tool", "Accuracy", "Sensitivity", "Specificity"), 
+            colnames=c("Accuracy", "Sensitivity", "Specificity"), 
             display=c("s", "f", "f", "f"), include.rownames=T)
+
+# Out-of-sample predicton ----
+
+dat.train <- rbind(dat.partitioned[[1]], dat.partitioned[[2]])
+dat.test <- dat.partitioned[[3]]
+
+dat.train <- dat.train[, c("y", lasso.vars)]
+dat.test <- dat.test[, c("y", lasso.vars)]
+
+levels(dat.train[,1])[levels(dat.train[,1])=="-1"] <- "0"
+levels(dat.test[,1])[levels(dat.test[,1])=="-1"] <- "0"
+
+tune.grid <-  expand.grid(interaction.depth = 5,
+                          n.trees = 1000,
+                          shrinkage = 0.01,
+                          n.minobsinnode = 20)
+
+fit.control <- trainControl(## 5-fold CV
+  method = "repeatedcv",
+  number = 5,
+  allowParallel = T)
+
+X <- dat.train[,-1]
+Y <- dat.train[,1]
+
+registerDoMC(cores = detectCores())
+bst <- train(x = X, y = Y, method = "gbm", tuneGrid = tune.grid, trControl = fit.control)
+
+# Can only test on a data set that contains the same vars as the train data set
+bst.pred <- predict(bst, newdata = dat.test[, names(X)])
+
+conmat <- confusionMatrix(bst.pred, dat.test[,"y"])  
