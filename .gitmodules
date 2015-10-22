@@ -1,3 +1,6 @@
 [submodule "data/kdd_2009"]
 	path = data/kdd_2009
 	url = https://github.com/ChicagoBoothML/DATA___KDDCup2009_Customer_relationship.git
+[submodule "utils/classroom"]
+	path = utils/classroom
+	url = https://github.com/ChicagoBoothML/HelpR.git
