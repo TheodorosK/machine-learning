@@ -2,7 +2,6 @@ rm(list=ls())
 
 source('../utils/source_me.R', chdir = T)
 CreateDefaultPlotOpts(WriteToFile = T)
-
 require(parallel)
 require(snowfall)
 require(gbm)
@@ -108,7 +107,8 @@ if (sfParallel()) {
   sfRemoveAll()
   sfExport("dat.oversampled")
 }
-imp.rf.model <- foreach(ntree=rep(500, sfCpus()), .combine=combine, 
+print("Selecting Important Variables using Random Forest")
+imp.rf.model <- foreach(ntree=rep(500, sfCpus()), .combine=combine,
                         .packages='randomForest') %dopar%
   randomForest(y ~ ., data=dat.oversampled[[1]], do.trace=T, importance=T)
 
@@ -118,7 +118,9 @@ imp.features <- rownames(imp.rf.model.imp)[
   order(imp.rf.model.imp, decreasing = T)]
 imp.features <- imp.features[1:30]
 
-varImpPlot(imp.rf.model)
+PlotSetup("rf_var_sel")
+varImpPlot(imp.rf.model, main = "")
+PlotDone()
 
 # Extract Important Features ----
 ExtractFeatures <- function(data, features) {
@@ -216,15 +218,20 @@ PredictRF <- function(dat.train, dat.validate) {
   
   conmat <- confusionMatrix(rf.model.predict, dat.validate[,"y"])
   
-  return(list(rf.model.predict, conmat))
+  return(list(rf.model, rf.model.predict, conmat))
 }
 
 dat.select.rf <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
 dat.select.lasso <- ExtractFeatures(dat.oversampled, c(lasso.vars, "y"))
 # PCA data frames are put together in the PCA section (they're more complicated)
 
+print("Starting Random Forest using RF Feature Selection")
 pred.rf.rf <- PredictRF(dat.select.rf[[1]], dat.partitioned[[2]])
+
+print("Starting Random Forest using Lasso Feature Selection")
 pred.rf.lasso <- PredictRF(dat.select.lasso[[1]], dat.partitioned[[2]])
+
+print("Starting Random Forest using PCA Feature Selection")
 pred.rf.pca <- PredictRF(dat.select.pca, dat.validate.pca)
 
 # Boosting tree ----
