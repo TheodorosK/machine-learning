@@ -63,13 +63,19 @@ Another tool for variable reduction is regression with $L_1$ regularization (i.e
 \end{enumerate}
 By setting $\lambda=10$ (which is a very high concavity tuning parameter) and selecting a model based on the BIC, the Gamma-Lasso chooses a model with only 11 variables.
 
-\subsection{PCA}
+\subsection{Principal Components Analysis (PCA)}
 
 Another dimension reduction tool is principal components analysis. Here, the goal is to transform our data set into a collection of orthogonal vectors (i.e. principal components). We can order the vectors by the amount of variation in our dependent data that they explain, and choose the first $N$ principal components to represent the data.
 
 The purpose is to reduce the dimensionality of our original data set into a small number of series that together explain a large share of the variation in our dependent variable. There is no obvious way to choose how many principal components to include. We would need to include 53 principal components to capture half of the observed variation in the data. We would need to include only 13, however, to capture one quarter of the observed variation in the data. For the rest of this exercise, we will proceed using the first 13 principal components. This allows us to capture 25 percent of the variation in the data while dropping almost 95 percent of the data series (not even including the series that were dropped as part of the data cleaning process). 
 
 \section{Model Selection}
+
+\subsection{Logistic Regression}
+The first predictive model we will try is a basic logistic regression model. We will use each of our three sets of reduced variables described above (from the random forest variable importance, the Gamma-Lasso, and PCA). We will simply estimate a linear model and see how well it predicts  churn out of sample.
+
+
+
 \subsection{Random Forest}\label{sec:mod_rf}
 Using only the covariates identified in \cref{sec:init_rf} we fit a much larger number of trees to our dataset.  The resulting model is then used to fit the non-oversampled validation set which results in the confusion matrix shown below.  Note that with this algorithm we have achieved a fairly decent sensitivity of 75\% (true-positive detection rate) at the expense of a relatively low specificity of just 58\% (i.e. we have many false-positives).
 
@@ -104,8 +110,12 @@ Prediction TRUE FALSE
 \subsection{Boosting}
 Another possible predictive model is regression tree boosting using the packages \texttt{gbm} and \texttt{caret}. We have three different training data sets available: the data selected by the random forest, the data selected by the Gamma-Lasso, or the principal components discussed above. For each set of training data, we also have the opportunity to tune our boosting tree with the interaction depth, number of trees, and the shrinkage parameter.
 
-\subsection{Logistic Regression}
-wclark
+To tune the boosting tree algorithm, we use the \texttt{caret} package to perform 5-fold cross-validation on each combination of parameters. We consider values of interaction depth of 1, 5, and 9; we try using 500, 1000, and 1500 trees; and we use shrinkage parameters of 0.01, 0.05, and 0.10. All told, there are 27 different combinations of tuning parameters, for each of three different sets of input variables (depending on the dimension reduction strategy we used). 
+
+In \cref{tab:boost_tune} we can see the results of this tuning exercise. For each dimension reduction strategy, we show the optimal set of tuning parameters as well as the out-of-sample accuracy (on a validation data set not used to train the model). We can see that the boosting tree trained on data selected by the Gamma-Lasso is the best (with 67 percent accuracy), followed closely by the variables selected by the random forest (with 65 percent accuracy). The principal components do not fare well, producing out-of-sample accuracy of only 55 percent.
+
+\input{boost_tune.tex}
+
 \subsection{Summary}
 
 
