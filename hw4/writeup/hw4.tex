@@ -1,0 +1,85 @@
+\documentclass[11pt, fleqn]{article}
+
+\input{../../utils/header.tex}
+
+% \crefname{figure}{Figure}{Figures}
+% \crefname{section}{Section}{Sections}
+% \crefname{table}{Table}{Tables}
+% \crefname{lstlisting}{Listing}{Listings}
+
+\setlength{\parskip}{12pt} % Sets a blank line in between paragraphs
+\setlength\parindent{0pt} % Sets the indent for each paragraph to zero
+
+\begin{document}
+
+\title{Machine Learning (41204-01)\\HW \#4}
+\author{Will Clark $\vert$ Matthew DeLio \\
+\texttt{will.clark@chicagobooth.edu} $\vert$ \texttt{mdelio@chicagobooth.edu} \\
+University of Chicago Booth School of Business}
+\date{\today}
+\maketitle
+
+\section{Data}
+
+\section{Cleaning the Dataset}
+mld
+\section{Variable Selection}
+\subsection{Random Forest - Influence ?}
+mld
+
+\subsection{The Gamma-Lasso}
+
+Another tool for variable reduction is regression with $L_1$ regularization (i.e. the lasso). The process of estimating a model while penalizing non-zero coefficients is an algorithmic way to reduce the dimensionality of our data set. There are two ways we can add to the dimension reduction process:
+\begin{enumerate}
+\item Using the Gamma-Lasso in the package \texttt{gamlr} allows us to control the concavity of the penalty function. A more concave penalty function increases the number of variables held out of the model and reduces dimensionality even further.
+\item The Gamma-Lasso algorithm gives us a series of models to choose from, each corresponding to a penalty tuning parameter $\lambda$. We can choose $\lambda$ (which determines the variables excluded from the model) according to different information criteria: the Akaike information criterion, the corrected Akaike information criterion, or the Bayes information criterion. In general, the BIC will give us the simplest model (i.e. reduce dimensionality the most), so we will use this criterion to select a model and a set of variables.
+\end{enumerate}
+By setting $\lambda=10$ (which is a very high concavity tuning parameter) and selecting a model based on the BIC, the Gamma-Lasso chooses a model with only 11 variables.
+
+\subsection{PCA}
+
+Another dimension reduction tool is principal components analysis. Here, the goal is to transform our data set into a collection of orthogonal vectors (i.e. principal components). We can order the vectors by the amount of variation in our dependent data that they explain, and choose the first $N$ principal components to represent the data.
+
+The purpose is to reduce the dimensionality of our original data set into a small number of series that together explain a large share of the variation in our dependent variable. There is no obvious way to choose how many principal components to include. We would need to include 53 principal components to capture half of the observed variation in the data. We would need to include only 13, however, to capture one quarter of the observed variation in the data. For the rest of this exercise, we will proceed using the first 13 principal components. This allows us to capture 25 percent of the variation in the data while dropping almost 95 percent of the data series (not even including the series that were dropped as part of the data cleaning process). 
+
+\section{Model Selection}
+\subsection{Random Forest}
+mld
+
+\subsection{Boosting}
+Another possible predictive model is regression tree boosting using the packages \texttt{gbm} and \texttt{caret}. We have three different training data sets available: the data selected by the random forest, the data selected by the Gamma-Lasso, or the principal components discussed above. For each set of training data, we also have the opportunity to tune our boosting tree with the interaction depth, number of trees, and the shrinkage parameter.
+
+\subsection{Logistic Regression}
+wclark
+\subsection{Summary}
+whoever
+\section{Out-of-Sample Prediction}
+whoever
+
+\end{document}
+
+% \input{.tex}
+
+% \begin{figure}
+%   \centering
+%   \begin{subfigure}[b]{0.49\textwidth}
+%     \caption{}
+%     \includegraphics[width=\textwidth]{.pdf}
+%     \label{fig:}
+%   \end{subfigure}
+%   \hfill
+%   \begin{subfigure}[b]{0.49\textwidth}
+%     \caption{}
+%     \includegraphics[width=\textwidth]{.pdf}
+%     \label{fig:}
+%   \end{subfigure}
+%   \caption{}
+% \end{figure}
+
+% \begin{figure}[!htb]
+%   \centering
+%   \caption{}
+%   \includegraphics[scale=.5]{.pdf}
+%   \label{fig:}
+% \end{figure}
+
