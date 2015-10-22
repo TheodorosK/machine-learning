@@ -3,6 +3,7 @@ rm(list=ls())
 source('../utils/source_me.R', chdir = T)
 require(parallel)
 require(snowfall)
+require(gbm)
 require(caret)
 require(foreach)
 require(doSNOW)
@@ -130,7 +131,11 @@ dat.select <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
 
 library(gamlr)
 
-GetLassoVars <- function(dat, gamma = 0) {
+GetLassoVars <- function(dat, gamma = 0, sel = "BIC") {
+  if (!sel %in% c("AIC", "AICc", "BIC")) {
+    stop("sel must be one of AIC, AICc, or BIC")
+  }
+  
   names(dat) <- c("y", sapply(names(dat)[-1], function(name) {
     paste("Var", sprintf("%03d", as.numeric(substr(name, 4, nchar(name)))), sep = "")
   }))
@@ -140,7 +145,13 @@ GetLassoVars <- function(dat, gamma = 0) {
   levels(Y)[levels(Y) == -1] <- 0
   lin <- gamlr(X, Y, verb = T, family = "binomial", gamma = gamma)
   
-  B <- drop(coef(lin))[-1]
+  if (sel == "AIC") {
+    B <- drop(coef(lin, select = which.min(AIC(lin))))[-1]
+  } else if (sel == "AICc") {
+    B <- drop(coef(lin, select = which.min(AICc(lin))))[-1]
+  } else {
+    B <- drop(coef(lin, select = which.min(BIC(lin))))[-1]    
+  }
   B <- B[B != 0]
   
   sig.vars <- sapply(names(B), function(name) {
@@ -152,7 +163,7 @@ GetLassoVars <- function(dat, gamma = 0) {
   return(unique(sig.vars))
 }
 
-lasso.vars <- GetLassoVars(dat.oversampled[[1]], gamma = 10)
+lasso.vars <- GetLassoVars(dat.oversampled[[1]], gamma = 10, "BIC")
 length(lasso.vars)
 
 # Principal Components Analysis ----
@@ -177,11 +188,11 @@ GetPCAVars <- function(dat, npcs = 10) {
 }
 
 dat.select.pca <- cbind.data.frame(as.factor(dat.oversampled[[1]][, 1]), 
-                        GetPCAVars(dat.oversampled[[1]]))
+                        GetPCAVars(dat.oversampled[[1]], npcs = 13))
 names(dat.select.pca)[1] <- "y"
 
 dat.validate.pca <- cbind.data.frame(as.factor(dat.partitioned[[2]][, 1]), 
-                          GetPCAVars(dat.partitioned[[2]]))
+                          GetPCAVars(dat.partitioned[[2]], npcs = 13))
 names(dat.validate.pca)[1] <- "y"
 
 ###############################################################################
@@ -215,16 +226,19 @@ pred.rf.pca <- PredictRF(dat.select.pca, dat.validate.pca)
 
 # Boosting tree ----
 
-library(gbm)
-
 levels(dat.select.rf[[1]][,1])[levels(dat.select.rf[[1]][,1])=="-1"] <- "0"
 levels(dat.partitioned[[2]][,1])[levels(dat.partitioned[[2]][,1])=="-1"] <- "0"
 
-boost <- gbm(formula = y ~ ., distribution = "bernoulli", 
-             data = dat.select.rf[[1]], n.trees = 50, 
-             interaction.depth = 20,
-             shrinkage = 0.1) 
+tune.grid <-  expand.grid(interaction.depth = c(1, 3, 5),
+                        n.trees = c(500, 1000, 1500),
+                        shrinkage = c(0.01, 0.05, 0.1),
+                        n.minobsinnode = 20)
 
-boost.pred <- predict(boost, newdata = dat.partitioned[[2]], n.trees = 50)
+X <- dat.select.rf[[1]][,-1]
+Y <- dat.select.rf[[1]][,1]
+bst <- train(x = X, y = Y, method = "gbm", tuneGrid = tune.grid)
 
-conmat <- confusionMatrix(boost.pred, dat.partitioned[[2]][,"y"])
+# Can only test on a data set that contains the same vars as the train data set
+bst.pred <- predict(bst, newdata = dat.partitioned[[2]][, names(X)])
+
+confmat <- confusionMatrix(bst.pred, dat.partitioned[[2]][,"y"])
