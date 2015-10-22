@@ -2,6 +2,8 @@ rm(list=ls())
 
 source('../utils/source_me.R', chdir = T)
 CreateDefaultPlotOpts(WriteToFile = T)
+
+require(gamlr)
 require(parallel)
 require(snowfall)
 require(gbm)
@@ -292,3 +294,44 @@ best.tune <- cbind(c("Random Forest", "Gamma-Lasso", "PCA"), best.tune)
 ExportTable(table=best.tune, file="boost_tune", caption="Optimal Tuning Parameters for Boosting Tree", 
             colnames=c("Dimension Reduction", "Number of Trees", "Interaction Depth", "Shrinkage", "Accuracy"), 
             display=c("s", "s", "d", "d", "f", "f"), include.rownames=F)
+
+# Logistic regression ----
+
+PredictGLM <- function(dat.train, dat.validate) {
+  levels(dat.train[,1])[levels(dat.train[,1])=="-1"] <- "0"
+  levels(dat.validate[,1])[levels(dat.validate[,1])=="-1"] <- "0"
+  
+  remove.cols <- c("Var207", "Var228")
+  if (sum(!remove.cols %in% names(dat.train))==0) {
+    dat.train <- dat.train[, !names(dat.train) %in% remove.cols]
+    dat.validate <- dat.validate[, !names(dat.train) %in% remove.cols]    
+  }
+  
+  lin <- glm(y ~ ., data = dat.train, family = "binomial")
+  pred.lin <- round(predict(lin, newdata = dat.validate, type = "response"))
+  
+  conmat <- confusionMatrix(pred.lin, dat.validate[,"y"])  
+  
+  return(list(pred.lin, conmat))
+}
+
+pred.lin.rf <- PredictGLM(dat.select.rf[[1]], dat.partitioned[[2]])
+pred.lin.lasso <- PredictGLM(dat.select.lasso[[1]], dat.partitioned[[2]])
+pred.lin.pca <- PredictGLM(dat.select.pca, dat.validate.pca)
+
+lin.accuracy <- c(pred.lin.rf[[2]]$overall[1],
+                  pred.lin.lasso[[2]]$overall[1],
+                  pred.lin.pca[[2]]$overall[1])
+lin.sensitivity <- c(pred.lin.rf[[2]]$byClass[1],
+                     pred.lin.lasso[[2]]$byClass[1],
+                     pred.lin.pca[[2]]$byClass[1])
+lin.specificity <- c(pred.lin.rf[[2]]$byClass[2],
+                     pred.lin.lasso[[2]]$byClass[2],
+                     pred.lin.pca[[2]]$byClass[2])
+lin.results <- cbind(lin.accuracy, lin.sensitivity, lin.specificity)
+rownames(lin.results) <- c("Random Forest", "Gamma-Lasso", "PCA")
+
+ExportTable(table=lin.results, file = "glm_accuracy", 
+            caption="Accuracy for Various GLM Predictions", 
+            colnames=c("Dimension Reduction Tool", "Accuracy", "Sensitivity", "Specificity"), 
+            display=c("s", "f", "f", "f"), include.rownames=T)
