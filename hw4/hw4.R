@@ -8,7 +8,7 @@ require(caret)
 require(foreach)
 require(doSNOW)
 
-sfInit(cpus=detectCores()/2, parallel=T)
+sfInit(cpus=detectCores(), parallel=T)
 registerDoSNOW(sfGetCluster())
 
 LoadData <- function(what) {
@@ -106,8 +106,8 @@ if (sfParallel()) {
   sfExport("dat.oversampled")
 }
 print("Selecting Important Variables using Random Forest")
-imp.rf.model <- foreach(ntree=rep(50, sfCpus()*10), .combine=combine,
-                        .multicombine=T, .packages='randomForest') %dopar%
+imp.rf.model <- foreach(ntree=rep(500, sfCpus()), .combine=combine,
+                        .packages='randomForest') %dopar%
   randomForest(y ~ ., data=dat.oversampled[[1]], do.trace=T, importance=T)
 
 # Should we use absolute value here?
@@ -206,8 +206,8 @@ PredictRF <- function(dat.train, dat.validate) {
     sfRemoveAll()
     sfExport("dat.train")
   }
-  rf.model <- foreach(ntree=rep(100, sfCpus()*10), .combine=combine, 
-                      .multicombine=T, .packages='randomForest') %dopar%
+  rf.model <- foreach(ntree=rep(1000, sfCpus()), .combine=combine, 
+                      .packages='randomForest') %dopar%
     randomForest(y ~ ., data=dat.train, ntree=ntree) 
   
   rf.model.predict <- predict(rf.model, newdata=dat.validate, type="response")
