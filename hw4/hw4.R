@@ -7,7 +7,7 @@ require(caret)
 require(foreach)
 require(doSNOW)
 
-sfInit(cpus=detectCores(), parallel=T)
+sfInit(cpus=detectCores()/2, parallel=T)
 registerDoSNOW(sfGetCluster())
 
 LoadData <- function(what) {
@@ -104,8 +104,9 @@ if (sfParallel()) {
   sfRemoveAll()
   sfExport("dat.oversampled")
 }
-imp.rf.model <- foreach(ntree=rep(500, sfCpus()), .combine=combine, 
-                        .packages='randomForest') %dopar%
+print("Selecting Important Variables using Random Forest")
+imp.rf.model <- foreach(ntree=rep(50, sfCpus()*10), .combine=combine,
+                        .multicombine=T, .packages='randomForest') %dopar%
   randomForest(y ~ ., data=dat.oversampled[[1]], do.trace=T, importance=T)
 
 # Should we use absolute value here?
@@ -194,23 +195,28 @@ PredictRF <- function(dat.train, dat.validate) {
     sfRemoveAll()
     sfExport("dat.train")
   }
-  rf.model <- foreach(ntree=rep(1000, sfCpus()), .combine=combine, 
-                      .packages='randomForest') %dopar%
+  rf.model <- foreach(ntree=rep(100, sfCpus()*10), .combine=combine, 
+                      .multicombine=T, .packages='randomForest') %dopar%
     randomForest(y ~ ., data=dat.train, ntree=ntree) 
   
   rf.model.predict <- predict(rf.model, newdata=dat.validate, type="response")
   
   conmat <- confusionMatrix(rf.model.predict, dat.validate[,"y"])
   
-  return(list(rf.model.predict, conmat))
+  return(list(rf.model, rf.model.predict, conmat))
 }
 
 dat.select.rf <- ExtractFeatures(dat.oversampled, c(imp.features, "y"))
 dat.select.lasso <- ExtractFeatures(dat.oversampled, c(lasso.vars, "y"))
 # PCA data frames are put together in the PCA section (they're more complicated)
 
+print("Starting Random Forest using RF Feature Selection")
 pred.rf.rf <- PredictRF(dat.select.rf[[1]], dat.partitioned[[2]])
+
+print("Starting Random Forest using Lasso Feature Selection")
 pred.rf.lasso <- PredictRF(dat.select.lasso[[1]], dat.partitioned[[2]])
+
+print("Starting Random Forest using PCA Feature Selection")
 pred.rf.pca <- PredictRF(dat.select.pca, dat.validate.pca)
 
 # Boosting tree ----
