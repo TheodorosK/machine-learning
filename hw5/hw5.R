@@ -56,15 +56,15 @@ sprintf("Random forest is %.1f percent accurate (runtime = %.2f mins)",
 # Boosting tree ----
 # Looks like same overfitting issue as RF above
 
-# tune.boost <- expand.grid(interaction.depth = seq(1, 9, 4),
-#                           n.trees = seq(500, 2000, 500),
-#                           shrinkage = c(0.01, 0.05),
-#                           n.minobsinnode = 20)
-
-tune.boost <- expand.grid(interaction.depth = 5, # takes 35 f'ing minutes to run
-                          n.trees = 500,
+tune.boost <- expand.grid(interaction.depth = seq(1, 9, 4), # takes 4.3 hours
+                          n.trees = seq(500, 2000, 500),
                           shrinkage = c(0.01, 0.05),
                           n.minobsinnode = 20)
+
+# tune.boost <- expand.grid(interaction.depth = 5, # takes 35 f'ing minutes to run
+#                           n.trees = 500,
+#                           shrinkage = c(0.01, 0.05),
+#                           n.minobsinnode = 20)
 
 ctrl.boost <- trainControl(method = "cv", number = 5, 
                            allowParallel = T)
