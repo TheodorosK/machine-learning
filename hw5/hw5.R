@@ -8,6 +8,9 @@ require(snowfall)
 require(caret)
 require(doSNOW)
 
+sfInit(cpus=detectCores(), parallel=T)
+registerDoSNOW(sfGetCluster())
+
 source('../utils/source_me.R', chdir = T)
 source('../utils/parse_data.R', chdir = T)
 CreateDefaultPlotOpts(WriteToFile = T)
@@ -37,6 +40,7 @@ sprintf("Distributed multinomial regression is %.1f percent accurate (runtime = 
 # If time, try things like regularized random forest
 
 # p <- dim(dat$X_train)[2] = 477; sqrt(p) ~ 22
+# The final value used for the model was mtry = 10. 
 tune.rf <- expand.grid(mtry = seq(10, 30, 5)) # takes about 10 mins on 8 cores
 
 ctrl.rf <- trainControl(method = "cv", number = 5, 
@@ -56,6 +60,8 @@ sprintf("Random forest is %.1f percent accurate (runtime = %.2f mins)",
 # Boosting tree ----
 # Looks like same overfitting issue as RF above
 
+# The final values used for the model were n.trees = 2000, interaction.depth = 5, shrinkage =
+#   0.05 and n.minobsinnode = 20.
 tune.boost <- expand.grid(interaction.depth = seq(1, 9, 4), # takes 4.3 hours
                           n.trees = seq(500, 2000, 500),
                           shrinkage = c(0.01, 0.05),
@@ -76,6 +82,40 @@ tt.boost <- toc()
 
 pred.boost <- predict(model.boost, dat$X_test, type = "raw")
 
-sprintf("Boosting tree is %.1f percent accurate (runtime = %.2f mins)", 
+sprintf("Boosting tree is %.1f percent accurate (runtime = %.2f hours)", 
         100 * sum(pred.boost == dat$y_test) / length(dat$y_test),
-        (tt.boost$toc-tt.boost$tic) / 60)
+        (tt.boost$toc-tt.boost$tic) / 3600)
+
+# Try re-shuffling the data ----
+
+dat.all <- cBind(as.factor(c(as.character(dat$y_train), as.character(dat$y_test))),
+                 rbind(dat$X_train, dat$X_test))
+names(dat.all)[1] <- "y"
+
+dat.repart <- PartitionDataset(c(0.7, 0.3), dat.all)
+redat <- list(dat.repart[[1]][, -1, with=F],
+              dat.repart[[2]][, -1, with=F],
+              dat.repart[[1]]$y,
+              dat.repart[[2]]$y)
+names(redat) <- c("X_train", "X_test", "y_train", "y_test")
+
+# Random forest (use optimal params from above)
+if (sfParallel()) {
+  sfRemoveAll()
+  sfExport("redat")
+}
+tic()
+model.rf.repart <- foreach(ntree=rep(125, sfCpus()), .combine=combine,
+        .packages='randomForest') %dopar%
+  randomForest(x = redat$X_train, y = redat$y_train, mtry = 10, do.trace=T, importance=T)
+tt.rf.repart <- toc()
+
+pred.rf.repart <- predict(model.rf.repart, redat$X_test, type = "response")
+
+sprintf("Re-shuffled random forest is %.1f percent accurate (runtime = %.2f mins)", 
+        100 * sum(pred.rf.repart == redat$y_test) / length(redat$y_test),
+        (tt.rf.repart$toc-tt.rf.repart$tic) / 60)
+
+# Stop cluster ----
+
+sfStop()
