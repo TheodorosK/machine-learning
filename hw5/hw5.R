@@ -106,7 +106,7 @@ if (sfParallel()) {
 }
 tic()
 model.rf.repart <- foreach(ntree=rep(125, sfCpus()), .combine=combine,
-        .packages='randomForest') %dopar%
+                           .packages='randomForest') %dopar%
   randomForest(x = redat$X_train, y = redat$y_train, mtry = 10, do.trace=T, importance=T)
 tt.rf.repart <- toc()
 
@@ -119,3 +119,24 @@ sprintf("Re-shuffled random forest is %.1f percent accurate (runtime = %.2f mins
 # Stop cluster ----
 
 sfStop()
+
+# Deep learning ----
+
+library(h2o)
+h2o.init(nthreads = -1)
+
+p <- ncol(dat$X_train)
+
+dat.h2o <- list(X_train = as.h2o(dat$X_train, destination_frame = "X_train"),
+                y_train = as.h2o(dat$y_train, destination_frame = "y_train"),
+                X_test = as.h2o(dat$X_test, destination_frame = "X_test"),
+                y_test = as.h2o(dat$y_test, destination_frame = "y_test"))
+
+model.nn1 <- h2o.deeplearning(x = 1:p, y = p+1, 
+                              training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
+                              hidden = 10,
+                              epochs = 5,
+                              model_id = "model.nn1")
+pred.nn1 <- as.data.frame(h2o.predict(model.nn1, dat.h2o$X_test))
+
+conmat.nn1 <- confusionMatrix(pred.nn1$predict, dat$y_test)
