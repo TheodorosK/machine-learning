@@ -134,6 +134,8 @@ library(h2o)
 h2o.init(nthreads = -1)
 
 p <- ncol(dat$X_train)
+y.nlevels <- nlevels(dat$y_train)
+
 
 dat.h2o <- list(X_train = as.h2o(dat$X_train, destination_frame = "X_train"),
                 y_train = as.h2o(dat$y_train, destination_frame = "y_train"),
@@ -142,49 +144,16 @@ dat.h2o <- list(X_train = as.h2o(dat$X_train, destination_frame = "X_train"),
 
 model.nn1 <- h2o.deeplearning(x = 1:p, y = p+1, 
                               training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
-                              hidden = 10,
-                              epochs = 5,
+                              activation = "TanhWithDropout",
+                              input_dropout_ratio = 0.50,
+                              hidden = c(p+y.nlevels, p+y.nlevels),
+                              hidden_dropout_ratios = c(0.5, 0.5),
+                              l1 = 1e-5,
+                              epochs = 50,
                               model_id = "model.nn1")
 pred.nn1 <- as.data.frame(h2o.predict(model.nn1, dat.h2o$X_test))
 conmat.nn1 <- confusionMatrix(pred.nn1$predict, dat$y_test)
-
-# Test effect of number of layers
-hidden <- list(10, c(10, 10), c(10,10,10), c(10,10,10,10), c(10,10,10,10,10))
-for (h in hidden) {
-  model.nn <- h2o.deeplearning(x = 1:p, y = p+1, 
-                               training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
-                               hidden = h,
-                               epochs = 5)
-  pred.nn <- as.data.frame(h2o.predict(model.nn, dat.h2o$X_test))
-  conmat.nn <- confusionMatrix(pred.nn$predict, dat$y_test)
-  print(paste("NN for hidden networks (", paste(h, collapse=","), 
-              ") has accuracy ", sprintf("%.3f", conmat.nn$overall[1]), sep=""))
-}
-
-# Test effect of layer thickness
-hidden <- list(50, c(50, 50), c(50,50,50), c(50,50,50,50), c(50,50,50,50,50))
-for (h in hidden) {
-  model.nn <- h2o.deeplearning(x = 1:p, y = p+1, 
-                               training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
-                               hidden = h,
-                               epochs = 5)
-  pred.nn <- as.data.frame(h2o.predict(model.nn, dat.h2o$X_test))
-  conmat.nn <- confusionMatrix(pred.nn$predict, dat$y_test)
-  print(paste("NN for hidden networks (", paste(h, collapse=","), 
-              ") has accuracy ", sprintf("%.3f", conmat.nn$overall[1]), sep=""))
-}
-
-# Use cross validated rule of thumb
-# http://stats.stackexchange.com/questions/181/how-to-choose-the-number-of-hidden-layers-and-nodes-in-a-feedforward-neural-netw
-
-hidden.opt <- round(mean(c(p, nlevels(dat$y_test))))
-model.nn2 <- h2o.deeplearning(x = 1:p, y = p+1, 
-                              training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
-                              hidden = hidden.opt,
-                              epochs = 5,
-                              model_id = "model.nn1")
-pred.nn2 <- as.data.frame(h2o.predict(model.nn2, dat.h2o$X_test))
-conmat.nn2 <- confusionMatrix(pred.nn1$predict, dat$y_test)
+print(conmat.nn1$overall[1])
 
 # Visualization ----
 
@@ -199,3 +168,4 @@ ExportTable(table = conmat.dmr$byClass[,c("Sensitivity", "Specificity", "Balance
             digits = 2, 
             colnames = c("Sensitivity", "Specificity", "Balanced Accuracy"), 
             include.rownames = T)
+
