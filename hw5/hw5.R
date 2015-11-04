@@ -136,12 +136,12 @@ dat.h2o <- list(X_train = as.h2o(dat$X_train, destination_frame = "X_train"),
 
 model.nn1 <- h2o.deeplearning(x = 1:p, y = p+1, 
                               training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
-                              activation = "TanhWithDropout",
+                              activation = "RectifierWithDropout",
                               input_dropout_ratio = 0.50,
                               hidden = c(p+y.nlevels, p+y.nlevels),
                               hidden_dropout_ratios = c(0.5, 0.5),
+                              epochs = 75,
                               l1 = 1e-5,
-                              epochs = 50,
                               model_id = "model.nn1")
 pred.nn1 <- as.data.frame(h2o.predict(model.nn1, dat.h2o$X_test))
 
