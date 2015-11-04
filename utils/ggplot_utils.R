@@ -11,7 +11,10 @@ ConfusionHeatMap <- function(conmat, title = "Confusion Matrix Heat Map", fname=
   p <- ggplot(conmat.melt, aes(x=Prediction, y=Reference, fill=value)) + 
     geom_tile() + 
     scale_fill_gradient(low="white", high="black") + 
-    ggtitle(title)
+    ggtitle(title) + 
+    theme(legend.position = c(0, 1), 
+         legend.justification = c(0, 1), 
+         legend.background = element_rect(colour = NA, fill = "white"))
   if (is.na(fname)) {
     plot(p)
   } else {
