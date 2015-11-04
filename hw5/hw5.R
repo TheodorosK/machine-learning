@@ -147,3 +147,5 @@ pred.nn1 <- as.data.frame(h2o.predict(model.nn1, dat.h2o$X_test))
 
 conmat.nn1 <- confusionMatrix(pred.nn1$predict, dat$y_test)
 print(conmat.nn1$overall[1])
+
+write.confusionMatrix(conmat.nn1$table, "nnet", "Confusion Matrix for Neural Network")
