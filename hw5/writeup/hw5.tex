@@ -13,9 +13,9 @@ University of Chicago Booth School of Business}
 
 We use a multinomial logistic regression, a random forest, and a boosting tree as a set of baseline models/algorithms against which we can assess the performance of the neural networks discussed in \cref{nnets}. 
 
-First, we use a multinomial logistic regression model an L1 penalty for variable selection/reduction. We use five-fold cross validation to select the optimal regularization parameter for each classification (i.e. there are six logistic regression models, each with its own L1 penalty). On our test data set, we find that this model predicts movement type with 95.4 percent accuracy. 
+First, we use a multinomial logistic regression model with an L1 penalty for variable selection/reduction. We use five-fold cross validation to select the optimal regularization parameter for each classification (i.e. there are six logistic regression models, each with its own L1 penalty). On our test data set, we find that this model predicts movement type with 95.4 percent accuracy. We can see in \cref{fig:heatmap_dmr} that the model predicts extremely well overall. The most common mistake it makes is to confuse standing/sitting, and it sometimes has trouble distinguishing between walking vs. walking up or down stairs.\footnote{We find the heatmap representation of the confusion matrix to be a quick and helpful way to visualise a model's predictive accuracy. Full tabular results can be found in the appendix.}
 
-Next, we try a random forest algorithm. The only parameter to tune for a random forest is the number of covariates sampled at each tree split (\texttt{mtry}). A rule of thumb is to set $\texttt{mtry}=\sqrt{p}$. In this case, $p=477$, so we estimated a random forest for each of $\texttt{mtry}\in(10, 15, 20, 25, 30)$ so that the range would be roughly centered around $\sqrt{p}$. Again using five-fold cross validation, we found the optimal \texttt{mtry} to be 10. This model predicts out of sample with 94.0 percent accuracy, making it slightly less effective than our multinomial logit model above.\footnote{In sample accuracy was above 98 percent, although the training and test set are composed of different groups of people, so we should not be surprised to see lower OOS accuracy.}
+Next, we try a random forest algorithm. The only parameter to tune for a random forest is the number of covariates sampled at each tree split (\texttt{mtry}). A rule of thumb is to set $\texttt{mtry}=\sqrt{p}$. In this case, $p=477$, so we estimated a random forest for each of $\texttt{mtry}\in(10, 15, 20, 25, 30)$ so that the range would be roughly centered around $\sqrt{p}$. Again using five-fold cross validation, we found the optimal \texttt{mtry} to be 10. This model predicts out of sample with 94.0 percent accuracy, making it slightly less effective than our multinomial logit model above.\footnote{In sample accuracy was above 98 percent, although the training and test set are composed of different groups of people, so we should not be surprised to see lower OOS accuracy.} We can see in \cref{fig:heatmap_rf} that this algorithm, like the one discussed above, also confuses sitting and standing. It also tends to get a bit more confused between walking vs. walking up/down stairs than the multinomial logit model.
 
 Lastly, we try a boosting tree algorithm. The parameters we can use to tune and the ranges over which we sampled are:
 \begin{itemize}
@@ -23,29 +23,29 @@ Lastly, we try a boosting tree algorithm. The parameters we can use to tune and 
 \item \texttt{n.trees} $\in (500, 1000, 1500, 2000)$
 \item \texttt{shrinkage} $\in (0.01, 0.05)$
 \end{itemize}
-The optimal algorithm, again chosen by five-fold cross validation, used $\texttt{n.trees}=2000$, $\texttt{interaction.depth}=5$, and $\texttt{shrinkage}=0.05$. This algorithm predicts out of sample with 94.4 percent accuracy, making it slightly more accurate than the random forest but still not as accurate as our multinomial logit model.
+The optimal algorithm, again chosen by five-fold cross validation, used $\texttt{n.trees}=2000$, $\texttt{interaction.depth}=5$, and $\texttt{shrinkage}=0.05$. This algorithm predicts out of sample with 94.4 percent accuracy, making it slightly more accurate than the random forest but still not as accurate as our multinomial logit model. We can see in \cref{fig:heatmap_boost} that this algorithm is worse than the two prior at distinguishing between sitting/standing, but it does slightly better than the random forest at distinguishing between walking vs. walking on stairs.
 
 \begin{landscape}
 \begin{figure}
   \centering
   \begin{subfigure}[b]{0.45\textwidth}
-    \caption{Confusion Matrix Heatmap: Multinomial Logit}
+    \caption{Confusion Heatmap: Multinomial Logit}
     \includegraphics[width=\textwidth]{heatmap_dmr.pdf}
-    \label{fig:lift_lin}
+    \label{fig:heatmap_dmr}
   \end{subfigure}
   \hfill
   \begin{subfigure}[b]{0.45\textwidth}
-    \caption{Confusion Matrix Heatmap: Random Forest}
+    \caption{Confusion Heatmap: Random Forest}
     \includegraphics[width=\textwidth]{heatmap_rf.pdf}
-    \label{fig:lift_rf}
+    \label{fig:heatmap_rf}
   \end{subfigure}
   \hfill
     \begin{subfigure}[b]{0.45\textwidth}
-    \caption{Confusion Matrix Heatmap: Boosting Tree}
+    \caption{Confusion Heatmap: Boosting Tree}
     \includegraphics[width=\textwidth]{heatmap_boost.pdf}
-    \label{fig:lift_boost}
+    \label{fig:heatmap_boost}
   \end{subfigure}
-  \caption{Lift Plots for Small and Large Models}
+  \caption{Confusion Matrix Heatmaps for Baseline Predictive Models}
 \end{figure}
 \end{landscape}
 
@@ -57,8 +57,19 @@ The optimal algorithm, again chosen by five-fold cross validation, used $\texttt
 
 \clearpage
 \begin{appendices}
+
+\section{Confusion Matrices for Baseline Models}
+
+\input{conmat_dmr.tex}
+\input{conmat_stats_dmr.tex}
+
+\input{conmat_rf.tex}
+
+\input{conmat_boost.tex}
+
 \section{Code Listings}
 \lstinputlisting[label=lst:code, caption=Code Snippet, language=R]{../hw5.R}
+
 \end{appendices}
 
 \end{document}
