@@ -19,7 +19,7 @@ CreateDefaultPlotOpts(WriteToFile = T)
 
 dat <- LoadCacheTagOrRun('data', parse_human_activity_recog_data)
 
-# Distributed multinomial regression ----
+# Distributed multinomial regression ##########################################
 
 tic()
 model.dmr <- LoadCacheTagOrRun('dmr', dmr, cl = sfGetCluster(), 
@@ -29,13 +29,14 @@ tt.dmr <- toc()
 
 pred.dmr <- predict(model.dmr, dat$X_test, type = "class")
 
-sprintf("Distributed multinomial regression is %.1f percent accurate (runtime = %.2f mins)", 
+sprintf(paste("Distributed multinomial regression is %.1f percent ",
+              "accurate (runtime = %.2f mins)"), 
         100 * sum(pred.dmr == dat$y_test) / length(dat$y_test),
         (tt.dmr$toc-tt.dmr$tic) / 60)
 
 conmat.dmr <- confusionMatrix(pred.dmr, dat$y_test)
 
-# Random forest ----
+# Random forest ###############################################################
 # In-sample CV accuracy is ~97 percent but OOS is ~94 percent
 # If time, try things like regularized random forest
 
@@ -60,17 +61,17 @@ sprintf("Random forest is %.1f percent accurate (runtime = %.2f mins)",
 
 conmat.rf <- confusionMatrix(pred.rf, dat$y_test)
 
-# Boosting tree ----
+# Boosting tree ###############################################################
 # Looks like same overfitting issue as RF above
 
-# The final values used for the model were n.trees = 2000, interaction.depth = 5, shrinkage =
-#   0.05 and n.minobsinnode = 20.
+# The final values used for the model were n.trees = 2000, 
+#   interaction.depth = 5, shrinkage =0.05 and n.minobsinnode = 20.
 tune.boost <- expand.grid(interaction.depth = seq(1, 9, 4), # takes 4.3 hours
                           n.trees = seq(500, 2000, 500),
                           shrinkage = c(0.01, 0.05),
                           n.minobsinnode = 20)
 
-# tune.boost <- expand.grid(interaction.depth = 5, # takes 35 f'ing minutes to run
+# tune.boost <- expand.grid(interaction.depth = 5, # takes 35 f'ing mins to run
 #                           n.trees = 500,
 #                           shrinkage = c(0.01, 0.05),
 #                           n.minobsinnode = 20)
@@ -79,7 +80,8 @@ ctrl.boost <- trainControl(method = "cv", number = 5,
                            allowParallel = T)
 
 tic()
-model.boost <- LoadCacheTagOrRun('gbm', train, x = dat$X_train, y = dat$y_train,
+model.boost <- LoadCacheTagOrRun(
+  'gbm', train, x = dat$X_train, y = dat$y_train,
                                  method = "gbm", trControl = ctrl.boost, 
                                  tuneGrid = tune.boost)
 tt.boost <- toc()
@@ -92,9 +94,10 @@ sprintf("Boosting tree is %.1f percent accurate (runtime = %.2f hours)",
 
 conmat.boost <- confusionMatrix(pred.boost, dat$y_test)
 
-# Try re-shuffling the data ----
+# Try re-shuffling the data ###################################################
 
-dat.all <- cBind(as.factor(c(as.character(dat$y_train), as.character(dat$y_test))),
+dat.all <- cBind(as.factor(c(as.character(dat$y_train),
+                             as.character(dat$y_test))),
                  rbind(dat$X_train, dat$X_test))
 names(dat.all)[1] <- "y"
 
@@ -122,15 +125,16 @@ tt.rf.repart <- toc()
 
 pred.rf.repart <- predict(model.rf.repart, redat$X_test, type = "response")
 
-sprintf("Re-shuffled random forest is %.1f percent accurate (runtime = %.2f mins)", 
+sprintf(paste("Re-shuffled random forest is %.1f percent ",
+              "accurate (runtime = %.2f mins)"), 
         100 * sum(pred.rf.repart == redat$y_test) / length(redat$y_test),
         (tt.rf.repart$toc-tt.rf.repart$tic) / 60)
 
-# Stop cluster ----
+# Stop cluster ################################################################
 
 sfStop()
 
-# Deep learning ----
+# Deep learning ###############################################################
 
 library(h2o)
 h2o.init(nthreads = -1)
@@ -161,7 +165,7 @@ print(conmat.nn1$overall[1])
 # Shutdown h2o ################################################################
 h2o.shutdown(prompt=F)
 
-# Visualization and Some Tables ----
+# Visualization and Some Tables ###############################################
 
 ConfusionHeatMap(conmat.dmr, title="", fname="heatmap_dmr")
 ConfusionHeatMap(conmat.rf, title="", fname="heatmap_rf")
