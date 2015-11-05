@@ -17,19 +17,15 @@ source('../utils/source_me.R', chdir = T)
 source('../utils/parse_data.R', chdir = T)
 CreateDefaultPlotOpts(WriteToFile = T)
 
-sfInit(cpus=detectCores(), parallel=T)
-registerDoSNOW(sfGetCluster())
-
-dat <- parse_human_activity_recog_data()
+dat <- LoadCacheTagOrRun('data', parse_human_activity_recog_data)
 
 # Distributed multinomial regression ----
 
-cl <- makeCluster(detectCores())
 tic()
-model.dmr <- dmr(cl = cl, covars = dat$X_train, counts = dat$y_train, 
-                 cv = T, verb = T)
+model.dmr <- LoadCacheTagOrRun('dmr', dmr, cl = sfGetCluster(), 
+                               covars = dat$X_train, counts = dat$y_train, 
+                               cv = T, verb = T)
 tt.dmr <- toc()
-stopCluster(cl)
 
 pred.dmr <- predict(model.dmr, dat$X_test, type = "class")
 
@@ -51,8 +47,9 @@ ctrl.rf <- trainControl(method = "cv", number = 5,
                         allowParallel = T)
 
 tic()
-model.rf <- train(x = dat$X_train, y = dat$y_train, ntree = 500,
-                  method = "rf", trControl = ctrl.rf, tuneGrid = tune.rf)
+model.rf <- LoadCacheTagOrRun('rf', train, x = dat$X_train, y = dat$y_train,
+                              ntree = 500, method = "rf", trControl = ctrl.rf, 
+                              tuneGrid = tune.rf)
 tt.rf <- toc()
 
 pred.rf <- predict(model.rf, dat$X_test, type = "raw")
@@ -82,8 +79,9 @@ ctrl.boost <- trainControl(method = "cv", number = 5,
                            allowParallel = T)
 
 tic()
-model.boost <- train(x = dat$X_train, y = dat$y_train,
-                     method = "gbm", trControl = ctrl.boost, tuneGrid = tune.boost)
+model.boost <- LoadCacheTagOrRun('gbm', train, x = dat$X_train, y = dat$y_train,
+                                 method = "gbm", trControl = ctrl.boost, 
+                                 tuneGrid = tune.boost)
 tt.boost <- toc()
 
 pred.boost <- predict(model.boost, dat$X_test, type = "raw")
@@ -113,9 +111,13 @@ if (sfParallel()) {
   sfExport("redat")
 }
 tic()
-model.rf.repart <- foreach(ntree=rep(125, sfCpus()), .combine=combine,
-                           .packages='randomForest') %dopar%
-  randomForest(x = redat$X_train, y = redat$y_train, mtry = 10, do.trace=T, importance=T)
+model.rf.repart <- 
+  LoadCacheTagOrRun('rf.repart', function() {
+    foreach(ntree=rep(125, sfCpus()), .combine=combine,
+            .packages='randomForest') %dopar%
+      randomForest(x = redat$X_train, y = redat$y_train, mtry = 10, 
+                   do.trace=T, importance=T)
+  })
 tt.rf.repart <- toc()
 
 pred.rf.repart <- predict(model.rf.repart, redat$X_test, type = "response")
@@ -142,18 +144,22 @@ dat.h2o <- list(X_train = as.h2o(dat$X_train, destination_frame = "X_train"),
                 X_test = as.h2o(dat$X_test, destination_frame = "X_test"),
                 y_test = as.h2o(dat$y_test, destination_frame = "y_test"))
 
-model.nn1 <- h2o.deeplearning(x = 1:p, y = p+1, 
-                              training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
-                              activation = "RectifierWithDropout",
-                              input_dropout_ratio = 0.50,
-                              hidden = c(p+y.nlevels, p+y.nlevels),
-                              hidden_dropout_ratios = c(0.5, 0.5),
-                              epochs = 75,
-                              l1 = 1e-5,
-                              model_id = "model.nn1")
+model.nn1 <- LoadCacheTagOrRun(
+  'model.nn1', h2o.deeplearning, x = 1:p, y = p+1, 
+  training_frame = h2o.cbind(dat.h2o$X_train, dat.h2o$y_train),
+  activation = "RectifierWithDropout",
+  input_dropout_ratio = 0.50,
+  hidden = c(p+y.nlevels, p+y.nlevels),
+  hidden_dropout_ratios = c(0.5, 0.5),
+  epochs = 500,
+  l1 = 1e-5,
+  model_id = "model.nn1")
 pred.nn1 <- as.data.frame(h2o.predict(model.nn1, dat.h2o$X_test))
 conmat.nn1 <- confusionMatrix(pred.nn1$predict, dat$y_test)
 print(conmat.nn1$overall[1])
+
+# Shutdown h2o ################################################################
+h2o.shutdown(prompt=F)
 
 # Visualization and Some Tables ----
 
@@ -187,4 +193,5 @@ write.confusionMatrix(conmat.rf$table, file = "conmat_rf",
 write.confusionMatrix(conmat.dmr$table, file = "conmat_boost", 
                       caption = "Confusion Matrix for Boosting Tree")
 
-write.confusionMatrix(conmat.nn1$table, "nnet", "Confusion Matrix for Neural Network")
+write.confusionMatrix(conmat.nn1$table, file = "conmat_nnet", 
+                      caption = "Confusion Matrix for Neural Network")
