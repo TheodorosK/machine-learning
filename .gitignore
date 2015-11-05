@@ -1,3 +1,5 @@
+final-project/data/*
+
 *.sqlite3
 cached/
 
