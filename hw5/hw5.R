@@ -155,17 +155,34 @@ pred.nn1 <- as.data.frame(h2o.predict(model.nn1, dat.h2o$X_test))
 conmat.nn1 <- confusionMatrix(pred.nn1$predict, dat$y_test)
 print(conmat.nn1$overall[1])
 
-# Visualization ----
+# Visualization and Some Tables ----
 
 ConfusionHeatMap(conmat.dmr, title="Confusion Matrix Heatmap: Multinomial Logit", fname="heatmap_dmr")
 ConfusionHeatMap(conmat.rf, title="Confusion Matrix Heatmap: Random Forest", fname="heatmap_rf")
 ConfusionHeatMap(conmat.boost, title="Confusion Matrix Heatmap: Boosting Tree", fname="heatmap_boost")
 
 export.cols <- c("Sensitivity", "Specificity", "Balanced Accuracy")
-ExportTable(table = conmat.dmr$byClass[,c("Sensitivity", "Specificity", "Balanced Accuracy")],
-            file = "conmat_dmr", 
-            caption = "Confusion Matrix for Multinomial Logit Regression", 
-            digits = 2, 
-            colnames = c("Sensitivity", "Specificity", "Balanced Accuracy"), 
-            include.rownames = T)
 
+ExportTable(table = conmat.dmr$byClass[, explort.cols],
+            file = "conmat_stats_dmr", 
+            caption = "Model Statistics for Multinomial Logit Regression", 
+            digits = 2, colnames = export.cols, include.rownames = T)
+
+ExportTable(table = conmat.rf$byClass[, export.cols],
+            file = "conmat_stats_rf", 
+            caption = "Model Statistics for Random Forest", 
+            digits = 2, colnames = export.cols, include.rownames = T)
+
+ExportTable(table = conmat.boost$byClass[, export.cols],
+            file = "conmat_stats_boost", 
+            caption = "Model Statistics for Boosting Tree", 
+            digits = 2, colnames = export.cols, include.rownames = T)
+
+write.confusionMatrix(conmat.dmr$table, file = "conmat_dmr", 
+                      caption = "Confusion Matrix for Multinomial Logit Regression")
+
+write.confusionMatrix(conmat.rf$table, file = "conmat_rf", 
+                      caption = "Confusion Matrix for Random Forest")
+
+write.confusionMatrix(conmat.dmr$table, file = "conmat_boost", 
+                      caption = "Confusion Matrix for Boosting Tree")
