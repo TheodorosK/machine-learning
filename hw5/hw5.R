@@ -166,6 +166,7 @@ h2o.shutdown(prompt=F)
 ConfusionHeatMap(conmat.dmr, title="", fname="heatmap_dmr")
 ConfusionHeatMap(conmat.rf, title="", fname="heatmap_rf")
 ConfusionHeatMap(conmat.boost, title="", fname="heatmap_boost")
+ConfusionHeatMap(conmat.nn1, title="", fname="heatmap_nn1")
 
 export.cols <- c("Sensitivity", "Specificity", "Balanced Accuracy")
 
@@ -184,6 +185,11 @@ ExportTable(table = conmat.boost$byClass[, export.cols],
             caption = "Model Statistics for Boosting Tree", 
             digits = 3, colnames = export.cols, include.rownames = T)
 
+ExportTable(table = conmat.nn1$byClass[, export.cols],
+            file = "conmat_stats_nn1",
+            caption = "Model Statistics for Neural Network",
+            digits = 3, colnames = export.cols, include.rownames = T)
+
 write.confusionMatrix(conmat.dmr$table, file = "conmat_dmr", 
                       caption = "Confusion Matrix for Multinomial Logit Regression")
 
@@ -193,5 +199,5 @@ write.confusionMatrix(conmat.rf$table, file = "conmat_rf",
 write.confusionMatrix(conmat.dmr$table, file = "conmat_boost", 
                       caption = "Confusion Matrix for Boosting Tree")
 
-write.confusionMatrix(conmat.nn1$table, file = "conmat_nnet", 
+write.confusionMatrix(conmat.nn1$table, file = "conmat_nn1",
                       caption = "Confusion Matrix for Neural Network")
