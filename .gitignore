@@ -1,4 +1,4 @@
-final-project/data/*
+final-project/data/*.csv
 
 *.sqlite3
 cached/
