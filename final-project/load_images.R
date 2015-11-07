@@ -62,3 +62,16 @@ for (i in sample(1:length(im.edge_det), 3)) {
   image(im.edge_det[[i]], col=im.col, main=i)
   image(im.raw[[i]], col=im.col, main=i)
 }
+
+# Display images for proposal #################################################
+
+# R assumes 72 pixels / inch by default
+pdf(file = GetFilename('sample_faces.pdf'), width = 96/72*3, height = 96/72*2)
+par(mfcol=c(2,3), pty="s", mar=c(0.1,0.1,0,0)+0.1)
+for (i in sample(length(im.raw), 3)) {
+  image(im.raw[[i]], col=im.col, xaxt='n', yaxt='n')
+  image(im.edge_det[[i]], col=im.col, xaxt='n', yaxt='n')
+}
+dev.off()
+
+
