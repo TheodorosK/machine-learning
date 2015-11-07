@@ -54,7 +54,7 @@ im.edge_det <- LoadCacheTagOrRun(
     # Saturate before Normalization
     conv[conv < out.min] <- out.min
     conv[conv > out.max] <- out.max
-    return(conv)
+    return(matrix(as.integer(round(conv)), nrow(conv), ncol(conv)))
   })
 
 layout(matrix(1:6, 2, 3))
