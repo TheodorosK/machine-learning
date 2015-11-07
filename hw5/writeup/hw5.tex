@@ -2,14 +2,14 @@
 
 \begin{document}
 
-\title{Machine Learning (41204-01)\\HW \#5}
+\title{Machine Learning (41204-01)\\HW \#6}
 \author{Will Clark $\vert$ Matthew DeLio \\
 \texttt{\{will.clark,mdelio\}@chicagobooth.edu} \\
 University of Chicago Booth School of Business}
 \date{\today}
 \maketitle
 
-\section{Baseline Predictive Models} \label{baseline}
+\section{Baseline Predictive Models} \label{sec:baseline}
 
 We use a multinomial logistic regression, a random forest, and a boosting tree as a set of baseline models/algorithms against which we can assess the performance of the neural networks discussed in \vref{sec:nnets}. 
 
@@ -26,16 +26,16 @@ Lastly, we try a boosting tree algorithm. The parameters we can use to tune and 
 The optimal algorithm, again chosen by five-fold cross validation, used 2000 trees, interaction depth of 5, and a shrinkage parameter of 0.05. This algorithm predicts out of sample with 94.4\% accuracy, making it slightly more accurate than the random forest but still not as accurate as our multinomial logit model. We can see in \vref{fig:heatmap_boost,tab:conmat_boost} that this algorithm is worse than the two prior at distinguishing between sitting/standing, but it does slightly better than the random forest at distinguishing between walking vs. walking on stairs.
 
 \section{Neural Nets} \label{sec:nnets}
-To begin our investigation of using neural networks we started fairly modestly with a hyperbolic tangent activation, with 2-hidden layers containing 200 nodes each, trained over 10 epochs.  With these settings, the out-of-sample accuracy was a modest 92.6\%.  To improve on this, we decided to keep the number of hidden layers at 2, but to tweak the number of nodes in each hidden layer to be: $\dim input + \dim classifiers = 477 + 6 = 483$.  With these hidden layers set we then tried the following activations:
+To begin our investigation of using neural networks we start fairly modestly with a hyperbolic tangent activation, with 2-hidden layers containing 200 nodes each, trained over 10 epochs.  With these settings, we train the algorithm and find the out-of-sample accuracy to be a modest 92.6\%.  To improve on this, we keep the number of hidden layers at 2, but, using a rule-of-thumb, tweak the number of nodes in each hidden layer to: $\dim input + \dim classifiers = 477 + 6 = 483$.  With these hidden layers set we then try the following activations:
 \begin{itemize}
 \item TanH
 \item TanH with Dropout
 \item Rectifier With Dropout
 \end{itemize}
 
-We found that the Rectifier with Dropout seemed to perform the best and then further tweaked the hidden dropout ratio, input dropout ratio, and added l1/l2 penalties (l2 penalties seemed to hurt accuracy, so they were removed).  With accuracy standing at 93.2\%, with just 10 epochs, we then decided to turn up the number of epochs to 500 (see \cref{lst:neural} for final settings).  Running the extra epochs further increased out-of-sample accuracy to 94.6\%.
+We find that the \texttt{Rectifier with Dropout} performs the best and then turn our attention to tweak the hidden-/input-layer dropout ratio, and to add l1/l2 penalties (l2 penalties seem to hurt accuracy, so they are removed).  With accuracy standing at 93.2\%, with just 10 training epochs, we then decide to increase the number of epochs to 500 to obtain our final model (see \cref{lst:neural} for final settings).  Running the extra epochs increases out-of-sample accuracy to 94.6\%.
 
-\Cref{tab:overall} shows a crude comparison of the overall accuracy by model type.  The neural network fairs pretty well overall, inferior only to the multinomial regression in terms of raw accuracy.  Looking more closely at the types of class errors it makes we see that, compared to the other models, it does mistake sitting for laying more often than the other algorithms, but otherwise does a fairly decent job predicting the activity.  Finally, when compared to the other tree-based supervised learning algorithms, the neural network trains faster and is easier to tune.
+\Cref{tab:overall} shows a crude comparison of the overall accuracy by model type.  The neural network fairs well overall, inferior only to the multinomial regression in terms of raw accuracy.  Looking more closely at the types of class errors, we see that, compared to the other models, it mistakes sitting for laying more often than the other, but otherwise is performs similarly.  Finally, compared to the other tree-based supervised learning algorithms, the neural network trains faster and is easier to tune.
 
 \input{overall.tex}
 
@@ -62,35 +62,36 @@ model.nn1 <- h2o.deeplearning(
   \label{fig:heatmap_nn1}
 \end{figure}
 
-\clearpage
 \begin{appendices}
 
+\clearpage
 \section{Confusion Heatmaps for Baseline Models}
 
-\begin{landscape}
-\begin{figure}
+% \begin{landscape}
+\begin{figure}[!htb]
   \centering
-  \begin{subfigure}[b]{0.45\textwidth}
+  \caption{Confusion Matrix Heatmaps for Baseline Predictive Models}
+  \begin{subfigure}[b]{0.49\textwidth}
     \caption{Multinomial Logit}
     \includegraphics[width=\textwidth]{heatmap_dmr.pdf}
     \label{fig:heatmap_dmr}
   \end{subfigure}
-  %\hfill
-  \begin{subfigure}[b]{0.45\textwidth}
+  \hfill
+  \begin{subfigure}[b]{0.49\textwidth}
     \caption{Random Forest}
     \includegraphics[width=\textwidth]{heatmap_rf.pdf}
     \label{fig:heatmap_rf}
   \end{subfigure}
-  %\hfill
-  \begin{subfigure}[b]{0.45\textwidth}
+  \hfill
+  \begin{subfigure}[b]{0.49\textwidth}
     \caption{Boosting Tree}
     \includegraphics[width=\textwidth]{heatmap_boost.pdf}
     \label{fig:heatmap_boost}
   \end{subfigure}
-  \caption{Confusion Matrix Heatmaps for Baseline Predictive Models}
 \end{figure}
-\end{landscape}
+% \end{landscape}
 
+\clearpage
 \section{Confusion Matrices for Baseline Models}
 
 \input{conmat_dmr.tex}
