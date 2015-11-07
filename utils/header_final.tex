@@ -1,0 +1,33 @@
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{varioref}
+\usepackage[noabbrev,capitalize]{cleveref}
+\usepackage[group-separator={,}, group-four-digits=true]{siunitx}
+\usepackage{lscape}
+\usepackage{bm}
+\usepackage{chngpage}
+\usepackage{blindtext} % For filler text
+
+\lstset{
+  frame=single,
+  basicstyle=\ttfamily,% print whole listing small
+  language=R,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  numbers=none,
+  commentstyle=\color{ForestGreen},
+  stringstyle=\color{Maroon},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=2,
+  literate={<-}{{$\gets$}}1 {~}{{$\sim$}}1
+}
+
+\sisetup{output-exponent-marker=\textsc{e}}
