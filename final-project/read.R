@@ -26,4 +26,14 @@ print(sprintf("# of images == # of data-points: %s",
 image(raw_images[[1]], col=gray((0:255)/255))
 image(raw_images[[2]], col=gray((0:255)/255))
 
+# Display images for proposal #################################################
+
+# R assumes 72 pixels / inch by default
+pdf(file = GetFilename('sample_faces.pdf'), width = 96/72*3, height = 96/72)
+par(mfrow=c(1,3), pty="s", mar=c(0.1,0.1,0,0)+0.1)
+for (i in sample(length(raw_images), 3)) {
+  image(raw_images[[i]], col=gray((0:255)/255), xaxt='n', yaxt='n')  
+}
+dev.off()
+
 # Cleanup Images ##############################################################
