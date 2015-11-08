@@ -2,6 +2,7 @@ rm(list = ls())
 
 source("../utils/source_me.R", chdir = T)
 CreateDefaultPlotOpts()
+Global.PlotOpts$Prefix <- "proposal/"
 
 require(doSNOW)
 require(snowfall)
@@ -36,7 +37,7 @@ source("image_processing.R")
 
 if (sfParallel()) {
   sfRemoveAll()
-  sfExport(list=c("im.raw", "NormalizeFilter", "NormalizeImage", "Convolve"))
+  sfExport(list=c("NormalizeFilter", "NormalizeImage", "Convolve"))
 }  
 im.edge_det <- LoadCacheTagOrRun(
   'edge_det_im', sfLapply, 
@@ -63,14 +64,42 @@ for (i in sample(1:length(im.edge_det), 3)) {
   image(im.raw[[i]], col=im.col, main=i)
 }
 
+# Sobel Edge Detection ########################################################
+if (sfParallel()) {
+  sfRemoveAll()
+  sfExport(list=c("NormalizeFilter", "NormalizeImage", "Convolve"))
+}  
+im.sobel_det <- LoadCacheTagOrRun(
+  "sobel_edge_im", 
+  sfLapply, x=im.raw, function(x) {
+  # Sobel Operator:
+  # https://en.wikipedia.org/wiki/Sobel_operator
+  # Sobel Kernel:
+  #   sobel.kern <- matrix(c(-1, 0, 1, -2, 0, 2, -1, 0, 1), 3, 3)
+  # Sobel-Feldman Kernel:
+  sobel.kern <- matrix(c(3, 10, 3, 0, 0, 0, -3, -10, -3), 3, 3)
+  Gx <- Convolve(x, sobel.kern)
+  Gy <- Convolve(x, t(sobel.kern))
+  G <- sqrt(Gx^2 + Gy^2)
+  return(NormalizeImage(G))
+})
+
+layout(matrix(1:9, 3, 3))
+for (i in sample(1:length(im.sobel_det), 3)) {
+  image(im.sobel_det[[i]], col=im.col, main=i)
+  image(im.edge_det[[i]], col=im.col, main=i)
+  image(im.raw[[i]], col=im.col, main=i)
+}
+
 # Display images for proposal #################################################
 
 # R assumes 72 pixels / inch by default
-pdf(file = GetFilename('sample_faces.pdf'), width = 96/72*3, height = 96/72*2)
-par(mfcol=c(2,3), pty="s", mar=c(0.1,0.1,0,0)+0.1)
+pdf(file = GetFilename('sample_faces.pdf'), width = 96/72*3, height = 96/72*3)
+par(mfcol=c(3,3), pty="s", mar=c(0.1,0.1,0,0)+0.1)
 for (i in sample(length(im.raw), 3)) {
   image(im.raw[[i]], col=im.col, xaxt='n', yaxt='n')
   image(im.edge_det[[i]], col=im.col, xaxt='n', yaxt='n')
+  image(im.sobel_det[[i]], col=im.col, xaxt='n', yaxt='n')
 }
 dev.off()
 
