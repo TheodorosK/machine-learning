@@ -1,3 +1,4 @@
+# RESET! ######################################################################
 rm(list = ls())
 source("../utils/source_me.R", chdir=T)
 
@@ -12,14 +13,13 @@ source("../utils/source_me.R", chdir=T)
 require(jsonlite)
 # use this line if you have downloaded "videoGames.json.gz" to your current 
 # folder
-fileConnection <- gzcon(file("videoGames.json.gz", "rb"))
+# fileConnection <- gzcon(file("videoGames.json.gz", "rb"))
 # use this line if the file is not downloaded to your computer (say working on
 # rstudio.chicagobooth.edu)
-# fileConnection <- gzcon(url("https://github.com/ChicagoBoothML/MachineLearning_Fall2015/raw/master/Programming%20Scripts/Lecture07/hw/videoGames.json.gz"))
+fileConnection <- gzcon(url("https://github.com/ChicagoBoothML/MachineLearning_Fall2015/raw/master/Programming%20Scripts/Lecture07/hw/videoGames.json.gz"))
 dat <- LoadCacheTagOrRun('raw', stream_in, fileConnection)
 close(fileConnection)
-rm(fileConnection)
-
+# rm(fileConnection)
 
 # Cleanup #####################################################################
 
@@ -34,13 +34,15 @@ ratingData <- ratingData[,colCounts(ratingData) > 3]
 # we are left with this many users and items
 dim(ratingData)
 
+# Example #####################################################################
+
 # example on how to recommend using Popular method
 r <- Recommender(ratingData, method="Popular")
 
-# recommend 5 items to user it row 10
+# recommend 5 items to user at row 10
 rec <- predict(r, ratingData[10, ], type="topNList", n=5)
 as(rec, "list")
 
-# predict ratings 
+# predict ratings for user at row 10
 rec <- predict(r, ratingData[10, ], type="ratings")
 as(rec, "matrix")
