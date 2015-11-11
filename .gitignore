@@ -1,4 +1,5 @@
 final-project/data/*
+sandbox/*
 
 *.sqlite3
 cached/

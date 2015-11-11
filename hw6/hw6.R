@@ -1,48 +1,70 @@
 # RESET! ######################################################################
 rm(list = ls())
+
+require(jsonlite)
+require(recommenderlab)
+
 source("../utils/source_me.R", chdir=T)
 
-# the following line will install and update 
-# packages that we are using for the ML course
-# NOTE: this may take some time
-# NOTE: ignore potential warnings, but not errors
-# source("https://raw.githubusercontent.com/ChicagoBoothML/HelpR/master/booth.ml.packages.R")
-
 # Load Data ###################################################################
-# this block of code will read in all the data
-require(jsonlite)
-# use this line if you have downloaded "videoGames.json.gz" to your current 
-# folder
-# fileConnection <- gzcon(file("videoGames.json.gz", "rb"))
-# use this line if the file is not downloaded to your computer (say working on
-# rstudio.chicagobooth.edu)
 fileConnection <- gzcon(url("https://github.com/ChicagoBoothML/MachineLearning_Fall2015/raw/master/Programming%20Scripts/Lecture07/hw/videoGames.json.gz"))
 dat <- LoadCacheTagOrRun('raw', stream_in, fileConnection)
 close(fileConnection)
-# rm(fileConnection)
 
 # Cleanup #####################################################################
 
-require("recommenderlab")
 # create a ratingData matrix using reviewerID, itemID, and rating
 ratingData <- as(dat[c("reviewerID", "itemID", "rating")], "realRatingMatrix")
+
 # we keep users that have rated more than 2 video games
 ratingData <- ratingData[rowCounts(ratingData) > 2,]
+
 # we will focus only on popular video games that have 
 # been rated by more than 3 times
 ratingData <- ratingData[,colCounts(ratingData) > 3]
+
 # we are left with this many users and items
 dim(ratingData)
 
 # Example #####################################################################
 
 # example on how to recommend using Popular method
-r <- Recommender(ratingData, method="Popular")
+# r <- Recommender(ratingData, method="Popular")
 
-# recommend 5 items to user at row 10
-rec <- predict(r, ratingData[10, ], type="topNList", n=5)
-as(rec, "list")
+# recommend 5 items to user it row 10
+# rec <- predict(r, ratingData[10, ], type="topNList", n=5)
+# as(rec, "list")
 
-# predict ratings for user at row 10
-rec <- predict(r, ratingData[10, ], type="ratings")
-as(rec, "matrix")
+# predict ratings 
+# rec <- predict(r, ratingData[10, ], type="ratings")
+# as(rec, "matrix")
+
+# Question 1: Which user has rated the most games? ############################
+
+userMost <- which.max(rowCounts(ratingData))
+rowCounts(ratingData[userMost, ])
+
+# Question 2: Which game has been rated by the most users? ####################
+
+gameMost <- which.max(colCounts(ratingData))
+colCounts(ratingData[, gameMost])
+
+# Question 3: Which user is most similar to U141954350? #######################
+
+rdNorm <- normalize(ratingData)
+rdBin <- binarize(rdNorm, 0) # for Jaccard; split into 0/1 by below/above average
+  
+uIdx <- which(rownames(rdNorm) == "U141954350")
+
+simCosine <- similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
+                              method = "cosine", which = "users")
+head(simCosine[order(simCosine, decreasing = T)])
+
+simJaccard <- similarity(x = rdBin[uIdx, ], y = rdBin[-uIdx, ], 
+                         method = "jaccard", which = "users")
+simJaccard[order(simJaccard, decreasing = T)]
+
+
+simPearson <- similarity(x = ratingData[uIdx, ], y = ratingData[-uIdx, ], 
+                              method = "pearson", which = "users")
+head(simPearson[order(simPearson)])
