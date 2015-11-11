@@ -1,29 +1,18 @@
 rm(list = ls())
+
+require(jsonlite)
+require(recommenderlab)
+
 source("../utils/source_me.R", chdir=T)
 
-# the following line will install and update 
-# packages that we are using for the ML course
-# NOTE: this may take some time
-# NOTE: ignore potential warnings, but not errors
-# source("https://raw.githubusercontent.com/ChicagoBoothML/HelpR/master/booth.ml.packages.R")
-
 # Load Data ###################################################################
-# this block of code will read in all the data
-require(jsonlite)
-# use this line if you have downloaded "videoGames.json.gz" to your current 
-# folder
+
 fileConnection <- gzcon(file("videoGames.json.gz", "rb"))
-# use this line if the file is not downloaded to your computer (say working on
-# rstudio.chicagobooth.edu)
-# fileConnection <- gzcon(url("https://github.com/ChicagoBoothML/MachineLearning_Fall2015/raw/master/Programming%20Scripts/Lecture07/hw/videoGames.json.gz"))
 dat <- LoadCacheTagOrRun('raw', stream_in, fileConnection)
 close(fileConnection)
 rm(fileConnection)
 
-
 # Cleanup #####################################################################
-
-require("recommenderlab")
 
 # create a ratingData matrix using reviewerID, itemID, and rating
 ratingData <- as(dat[c("reviewerID", "itemID", "rating")], "realRatingMatrix")
@@ -39,20 +28,45 @@ ratingData <- ratingData[,colCounts(ratingData) > 3]
 dim(ratingData)
 
 # example on how to recommend using Popular method
-r <- Recommender(ratingData, method="Popular")
+# r <- Recommender(ratingData, method="Popular")
 
 # recommend 5 items to user it row 10
-rec <- predict(r, ratingData[10, ], type="topNList", n=5)
-as(rec, "list")
+# rec <- predict(r, ratingData[10, ], type="topNList", n=5)
+# as(rec, "list")
 
 # predict ratings 
-rec <- predict(r, ratingData[10, ], type="ratings")
-as(rec, "matrix")
+# rec <- predict(r, ratingData[10, ], type="ratings")
+# as(rec, "matrix")
 
 # Question 1: Which user has rated the most games? ############################
 
-which.max(rowCounts(ratingData))
+userMost <- which.max(rowCounts(ratingData))
+rowCounts(ratingData[userMost, ])
 
 # Question 2: Which game has been rated by the most users? ####################
 
-which.max(colCounts(ratingData))
+gameMost <- which.max(colCounts(ratingData))
+colCounts(ratingData[, gameMost])
+
+# Question 3: Which user is most similar to U141954350? #######################
+
+rdNorm <- normalize(ratingData)
+
+uIdx <- which(rownames(rdNorm) == "U141954350")
+
+simCosine <- order(similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
+                              method = "cosine", which = "users"), 
+                   decreasing = T)[1:10]
+
+simPearson <- order(similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
+                              method = "pearson", which = "users"), 
+                   decreasing = T)[1:10]
+
+simJaccard <- order(similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
+                              method = "jaccard", which = "users"), 
+                   decreasing = T)[1:10]
+
+simDf <- data.frame(cosine = rownames(ratingData)[simCosine],
+                    pearson = rownames(ratingData)[simPearson],
+                    jaccard = rownames(ratingData)[simJaccard])
+
