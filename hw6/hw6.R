@@ -51,22 +51,20 @@ colCounts(ratingData[, gameMost])
 # Question 3: Which user is most similar to U141954350? #######################
 
 rdNorm <- normalize(ratingData)
-
+rdBin <- binarize(rdNorm, 0) # for Jaccard; split into 0/1 by below/above average
+  
 uIdx <- which(rownames(rdNorm) == "U141954350")
 
-simCosine <- order(similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
-                              method = "cosine", which = "users"), 
-                   decreasing = T)[1:10]
+simCosine <- similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
+                              method = "cosine", which = "users")
+head(simCosine[order(simCosine, decreasing = T)])
 
-simPearson <- order(similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
-                              method = "pearson", which = "users"), 
-                   decreasing = T)[1:10]
+simJaccard <- similarity(x = rdBin[uIdx, ], y = rdBin[-uIdx, ], 
+                         method = "jaccard", which = "users")
+simJaccard[order(simJaccard, decreasing = T)]
 
-simJaccard <- order(similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
-                              method = "jaccard", which = "users"), 
-                   decreasing = T)[1:10]
 
-simDf <- data.frame(cosine = rownames(ratingData)[simCosine],
-                    pearson = rownames(ratingData)[simPearson],
-                    jaccard = rownames(ratingData)[simJaccard])
+simPearson <- similarity(x = ratingData[uIdx, ], y = ratingData[-uIdx, ], 
+                              method = "pearson", which = "users")
+head(simPearson[order(simPearson)])
 
