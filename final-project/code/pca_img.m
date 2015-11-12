@@ -10,7 +10,7 @@ OFFSET = 0; % ignores the first X principal components
 %% Read data
 
 disp('Reading data...')
-train = dlmread('training.csv', ',', 1, 0);
+train = dlmread('../data/training.csv', ', ', 1, 0); % include a space in delimiter when in Octave
 faces = train(:, 31:end); % each row is a face
 [M,N] = size(faces);
 disp('Done.')
@@ -63,8 +63,6 @@ for ii = 1:5
     subplot(3, 5, ii+10);
     imshow(reshape(rescale(histo_faces_pca(ii,:), 0, 255), 96, 96)', [0 255]);
 end
-
-toc()
 
 %% Save for later use!!
 

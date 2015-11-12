@@ -1,7 +1,7 @@
-function[img_s] = histogram_stretch(img)
+function[img_s] = histogram_stretch(img, lo_bound, hi_bound)
 
-old_min = prctile(img, 5);
-old_max = prctile(img, 95);
+old_min = prctile(img', lo_bound); % in Octave, must use img' instead of img
+old_max = prctile(img', hi_bound);
 
 new_min = 0;
 new_max = 255;
