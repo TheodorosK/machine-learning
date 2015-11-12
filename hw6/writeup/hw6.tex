@@ -32,19 +32,34 @@ The game that has been rated most frequently is \texttt{I760611623}; it has been
 \end{figure}
 
 \section{User Similarity}
-To find the user similarity
+To find the user most similar to \texttt{U141954350}, we use RecommenderLab's similarity function.  For the \texttt{cosine} method, we can simply feed the raw ratings data into the similarity function with our user in question and get a list of similiarity scores between them and the others.
 
+However, for the \texttt{jaccard} method, we had to "binarize" the ratings.  To do this, we first normalize the data, which attempts to reduce any user-bias by row-centering the data (subtracts the user's mean score from each rating).  With this normalized data, we choose then to use the mean (now 0) as the cutoff between a binary 0/1.  This means that any score above the user's mean is a favorable score (=1), and any below, is a dis-favorable (=0).  This binary data is then fed into the similarity function with the \texttt{jaccard} method which produces similarity scores between the user in question and the others.
+
+We attempted to use the \texttt{pearson} method, but ran into issues when calculating the similarity matrix (it returned only NAs).
+
+The top-10 scores are listed in \cref{tab:top10}.  These show some good agreement between the two methods with the top-5 matching in exact order.  Furthermore, of the top 10 similar users, 9 appear in both lists.  The closest user to our user in question is \texttt{U887577623}
+
+\input{top10.tex}
 
 \section{Recommendations}
 
+To recommend a particular item to our user \texttt{U141954350} we utilize a "popular" recommender (see \vref{lst:code}).  We employ two methods for determining which item to recommend.
+\begin{enumerate}
+\item \textbf{Top-N List};\\Uses the recommender to produce a top-10 list.
+\item \textbf{Top Predicted Ratings}.\\Predicts all ratings for the user, which can then be sorted to produce a top-10 list.
+\end{enumerate}
 
+Before beginning this analysis, we would have been surprised if these two lists were drastically different from one another --- they are, at least in theory supposed to produce the items that are "best" for the given user.  However, we find that they produce completely different lists with drastically different predicted ratings (see \cref{tab:topn,tab:highest}).  Likely the algorithms work differently, one using user-similarity to predict a top list (Top-N List) and the other just producing top-ratings with potentially low support (Top Predicted Ratings).  If this is the case, one would expect the Top-N List to represent a more robust list.  Therefore the item that we would recommend to the user is \texttt{I840620023}.
+
+\input{topn.tex}
+\input{highest.tex}
 
 \begin{appendices}
 
 \clearpage
-
-%\section{Code Listings}
-%\lstinputlisting[label=lst:code, caption=Code Snippet, language=R]{../hw5.R}
+\section{Code Listings}
+\lstinputlisting[label=lst:code, caption=Code for Homework, language=R]{../hw6.R}
 
 \end{appendices}
 
