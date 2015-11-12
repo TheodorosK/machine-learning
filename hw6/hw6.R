@@ -82,17 +82,27 @@ ExportTable(top10, "top10", sprintf("Top10 Users Similar to %s", user))
 
 # Question 4: Recommend a video game to the user “U141954350” #################
 
-rec <- Recommender(ratingData[-uIdx,], method = "POPULAR")
+rec <- Recommender(ratingData, method = "POPULAR")
 
-pre <- predict(rec, ratingData[uIdx,], n = 10)
+# Predict the top 10 games for the chosen user.
+pre <- predict(rec, ratingData[uIdx,], type="topNList", n=10)
 pre <- as(pre, "list")[[1]]
+print(pre)
 
+# Predict all game ratings for the chosen user.
 preRat <- predict(rec, ratingData[uIdx,], type="ratings")
-preRat <- as(preRat, "list")$U141954350
+preRat <- as(preRat, "list")[[1]]
+print(preRat)
 
 # How would the user rate the 10 most popular items?
-preRat[names(preRat) %in% pre]
+user.top10 <- sort(preRat[names(preRat) %in% pre], decreasing = T)
 
 # What 10 items would get the highest rating?
-preRat[order(preRat, decreasing = T)][1:10]
+user.highest <- sort(preRat, decreasing = T)[1:10]
 
+ExportTable(as.data.frame(user.top10), "topn", 
+            sprintf("%s's Predicted Top 10 from Recommender", user), 
+            colnames = "Predicted Rating")
+ExportTable(as.data.frame(user.highest), "highest",
+            sprintf("%s's 10 Highest Rated Games", user),
+            colnames = "Predicted Rating")
