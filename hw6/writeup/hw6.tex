@@ -11,13 +11,33 @@ University of Chicago Booth School of Business}
 
 \section{Data Summary}
 
-The user that has rated the most video games is \texttt{U584295664}; he has rated 53 games. This user is an extreme outlier, as the median user rated only two games and only one other user rated more than 21 games. This behavior makes him approximately 22 standard deviations above the mean.
+The user that has rated the most video games is \texttt{U584295664}; he has rated 53 games. This user is an extreme outlier, as the median user rated only two games and only one other user rated more than 21 games. This behavior makes him approximately 22 standard deviations above the mean. We can see in \cref{fig:histo_users} just how extreme this outlier is (the maximum value is marked with a red line).
 
-The game that has been rated most frequently is \texttt{I760611623}; it has been rated 200 times. This game is also an extreme outlier, as the median game has been rated three times and the next most-rated game was rated by only 102 users. The rating profile for this game puts it at approximately 15 standard deviations above the mean.
+The game that has been rated most frequently is \texttt{I760611623}; it has been rated 200 times. This game is also an extreme outlier, as the median game has been rated three times and the next most-rated game was rated by only 102 users. The rating profile for this game puts it at approximately 15 standard deviations above the mean. We can see in \cref{fig:histo_games} how far from the center of the distribution this game is (the maximum value is again marked in red).
+
+\begin{figure}
+\centering
+\begin{subfigure}[b]{0.49\textwidth}
+\caption{by User}
+\includegraphics[width=\textwidth]{histo_users.pdf}
+\label{fig:histo_users}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.49\textwidth}
+\caption{by Game}
+\includegraphics[width=\textwidth]{histo_games.pdf}
+\label{fig:histo_games}
+\end{subfigure}
+\caption{Distribution of Rating Behavior}
+\end{figure}
 
 \section{User Similarity}
+To find the user similarity
+
 
 \section{Recommendations}
+
+
 
 \begin{appendices}
 
