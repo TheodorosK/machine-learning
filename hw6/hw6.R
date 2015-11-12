@@ -3,8 +3,10 @@ rm(list = ls())
 
 require(jsonlite)
 require(recommenderlab)
+require(ggplot2)
 
 source("../utils/source_me.R", chdir=T)
+CreateDefaultPlotOpts(WriteToFile = T)
 
 # Load Data ###################################################################
 fileConnection <- gzcon(url("https://github.com/ChicagoBoothML/MachineLearning_Fall2015/raw/master/Programming%20Scripts/Lecture07/hw/videoGames.json.gz"))
@@ -26,28 +28,35 @@ ratingData <- ratingData[,colCounts(ratingData) > 3]
 # we are left with this many users and items
 dim(ratingData)
 
-# Example #####################################################################
-
-# example on how to recommend using Popular method
-# r <- Recommender(ratingData, method="Popular")
-
-# recommend 5 items to user it row 10
-# rec <- predict(r, ratingData[10, ], type="topNList", n=5)
-# as(rec, "list")
-
-# predict ratings 
-# rec <- predict(r, ratingData[10, ], type="ratings")
-# as(rec, "matrix")
-
 # Question 1: Which user has rated the most games? ############################
 
 userMost <- which.max(rowCounts(ratingData))
 rowCounts(ratingData[userMost, ])
 
+table(rowCounts(ratingData))
+max(scale(rowCounts(ratingData)))
+
+PlotSetup("histo_users")
+p <- qplot(rowCounts(ratingData), binwidth = 1) + 
+  geom_vline(xintercept = rowCounts(ratingData[userMost, ]), color="red") + 
+  labs(x = "Number of Ratings / User", y = "Frequency")
+plot(p)
+PlotDone()
+
 # Question 2: Which game has been rated by the most users? ####################
 
 gameMost <- which.max(colCounts(ratingData))
 colCounts(ratingData[, gameMost])
+
+table(colCounts(ratingData))
+max(scale(colCounts(ratingData)))
+
+PlotSetup("histo_games")
+p <- qplot(colCounts(ratingData), binwidth = 3) + 
+  geom_vline(xintercept = colCounts(ratingData[, gameMost]), color="red") + 
+  labs(x = "Number of Unique Ratings / Game", y = "Frequency")
+plot(p)
+PlotDone()
 
 # Question 3: Which user is most similar to U141954350? #######################
 
