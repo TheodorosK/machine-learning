@@ -92,6 +92,9 @@ print(pre)
 # Predict all game ratings for the chosen user.
 preRat <- predict(rec, ratingData[uIdx,], type="ratings")
 preRat <- as(preRat, "list")[[1]]
+# Remove any items rated by the user.
+rated <- as(ratingData[uIdx,], "list")[[1]]
+preRat <- preRat[!(names(preRat) %in% names(rated))]
 print(preRat)
 
 # How would the user rate the 10 most popular items?
