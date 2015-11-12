@@ -55,16 +55,31 @@ rdBin <- binarize(rdNorm, 0) # for Jaccard; split into 0/1 by below/above averag
   
 uIdx <- which(rownames(rdNorm) == "U141954350")
 
-simCosine <- similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
+simCosine <- similarity(x = ratingData[uIdx, ], y = ratingData[-uIdx, ], 
                               method = "cosine", which = "users")
-head(simCosine[order(simCosine, decreasing = T)])
 
 simJaccard <- similarity(x = rdBin[uIdx, ], y = rdBin[-uIdx, ], 
                          method = "jaccard", which = "users")
-simJaccard[order(simJaccard, decreasing = T)]
 
-
-simPearson <- similarity(x = ratingData[uIdx, ], y = ratingData[-uIdx, ], 
+simPearson <- similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
                               method = "pearson", which = "users")
-head(simPearson[order(simPearson)])
 
+simUsers <- data.frame(cosine = rownames(ratingData)[order(simCosine, decreasing = T)[1:10]],
+                       jaccard = rownames(ratingData)[order(simJaccard, decreasing = T)[1:10]],
+                       pearson = rownames(ratingData)[order(simPearson, decreasing = T)[1:10]])
+
+# Question 4: Recommend a video game to the user “U141954350” #################
+
+rec <- Recommender(ratingData[-uIdx,], method = "POPULAR")
+
+pre <- predict(rec, ratingData[uIdx,], n = 10)
+pre <- as(pre, "list")[[1]]
+
+preRat <- predict(rec, ratingData[uIdx,], type="ratings")
+preRat <- as(preRat, "list")$U141954350
+
+# How would the user rate the 10 most popular items?
+preRat[names(preRat) %in% pre]
+
+# What 10 items would get the highest rating?
+preRat[order(preRat, decreasing = T)][1:10]
