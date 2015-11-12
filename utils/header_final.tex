@@ -6,6 +6,7 @@
 \usepackage{multirow}
 \usepackage{tabularx}
 \usepackage{varioref}
+\usepackage{hyperref}
 \usepackage[noabbrev,capitalize]{cleveref}
 \usepackage[group-separator={,}, group-four-digits=true]{siunitx}
 \usepackage{lscape}
@@ -28,6 +29,12 @@
   breakatwhitespace=true,
   tabsize=2,
   literate={<-}{{$\gets$}}1 {~}{{$\sim$}}1
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
 }
 
 \sisetup{output-exponent-marker=\textsc{e}}
