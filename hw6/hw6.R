@@ -1,3 +1,4 @@
+# RESET! ######################################################################
 rm(list = ls())
 
 require(jsonlite)
@@ -6,11 +7,9 @@ require(recommenderlab)
 source("../utils/source_me.R", chdir=T)
 
 # Load Data ###################################################################
-
-fileConnection <- gzcon(file("videoGames.json.gz", "rb"))
+fileConnection <- gzcon(url("https://github.com/ChicagoBoothML/MachineLearning_Fall2015/raw/master/Programming%20Scripts/Lecture07/hw/videoGames.json.gz"))
 dat <- LoadCacheTagOrRun('raw', stream_in, fileConnection)
 close(fileConnection)
-rm(fileConnection)
 
 # Cleanup #####################################################################
 
@@ -26,6 +25,8 @@ ratingData <- ratingData[,colCounts(ratingData) > 3]
 
 # we are left with this many users and items
 dim(ratingData)
+
+# Example #####################################################################
 
 # example on how to recommend using Popular method
 # r <- Recommender(ratingData, method="Popular")
@@ -52,21 +53,21 @@ colCounts(ratingData[, gameMost])
 
 rdNorm <- normalize(ratingData)
 rdBin <- binarize(rdNorm, 0) # for Jaccard; split into 0/1 by below/above average
-  
+
 uIdx <- which(rownames(rdNorm) == "U141954350")
 
-simCosine <- similarity(x = ratingData[uIdx, ], y = ratingData[-uIdx, ], 
-                              method = "cosine", which = "users")
+simCosine <- similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
+                        method = "cosine", which = "users")
+head(simCosine[order(simCosine, decreasing = T)])
 
 simJaccard <- similarity(x = rdBin[uIdx, ], y = rdBin[-uIdx, ], 
                          method = "jaccard", which = "users")
+simJaccard[order(simJaccard, decreasing = T)]
 
-simPearson <- similarity(x = rdNorm[uIdx, ], y = rdNorm[-uIdx, ], 
-                              method = "pearson", which = "users")
 
-simUsers <- data.frame(cosine = rownames(ratingData)[order(simCosine, decreasing = T)[1:10]],
-                       jaccard = rownames(ratingData)[order(simJaccard, decreasing = T)[1:10]],
-                       pearson = rownames(ratingData)[order(simPearson, decreasing = T)[1:10]])
+simPearson <- similarity(x = ratingData[uIdx, ], y = ratingData[-uIdx, ], 
+                         method = "pearson", which = "users")
+head(simPearson[order(simPearson)])
 
 # Question 4: Recommend a video game to the user “U141954350” #################
 
