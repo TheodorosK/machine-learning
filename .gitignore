@@ -1,5 +1,6 @@
 final-project/data/*
 sandbox/*
+data/wikipedia.gml
 
 *.sqlite3
 cached/

@@ -8,6 +8,10 @@ library(igraphdata)
 source("../utils/source_me.R", chdir=T)
 CreateDefaultPlotOpts(WriteToFile = T)
 
+###############################################################################
+# ZACHARY'S KARATE CLUB #######################################################
+###############################################################################
+
 data(karate, package = "igraphdata")
 
 # Vizualize -------------------------------------------------------------------
@@ -62,18 +66,19 @@ Mode <- function(x) {
 EvalCommunities <- function(network, cl, truecl) {
   gps <- groups(cl)
   nMissed <- 0
-#   missedVerts <- c()
+  #   missedVerts <- c()
   for(gp in gps) {
     gp.fac <- truecl[V(network)$name %in% gp] # factions of this sub-group
     nMissed <- nMissed + sum(gp.fac != Mode(gp.fac))
-#     missedVerts <- c(missedVerts, gp[gp.fac != Mode(gp.fac)])
+  #     missedVerts <- c(missedVerts, gp[gp.fac != Mode(gp.fac)])
   }
-#   return(list(nMissed, missedVerts))
+  #   return(list(nMissed, missedVerts))
   return(nMissed)
 }
 
 # Edge betweenness
-cl <- cluster_edge_betweenness(karate)
+# Note: does better when we tell it to ignore weights
+cl <- cluster_edge_betweenness(karate, weights = NULL)
 PlotCommunities(karate, karate.layout, factions, leaders, cl, 
                 'edge_betweenness')
 missed <- EvalCommunities(karate, cl, factions)
@@ -136,3 +141,10 @@ PlotCommunities(karate, karate.layout, factions, leaders, cl,
                 'walktrap')
 missed <- EvalCommunities(karate, cl, factions)
 sprintf("%s algorithm mis-classified %d vertices", "walktrap", missed)
+
+###############################################################################
+# WIKIPEDIA ###################################################################
+###############################################################################
+
+# Vizualize -------------------------------------------------------------------
+
