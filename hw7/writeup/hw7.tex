@@ -98,25 +98,32 @@ Ultimately, all algorithms besides the Edge Betweenness and Leading Eigenvector 
 \subsection{Clustering}
 Due to the size of the data-set, we apply at the first clustering algorithm that we got working on the data.
 
-% \begin{figure}
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{0.49\textwidth}
+    \caption{Cluster-Size}
+    \includegraphics[width=\textwidth]{wiki_cl_hist.pdf}
+    \label{fig:wiki_size}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.49\textwidth}
+    \caption{Vertex Connectedness}
+    \includegraphics[width=\textwidth]{wiki_edge_hist.pdf}
+    \label{fig:wiki_conn}
+  \end{subfigure}
+  \caption{}
+\end{figure}
+
+% \begin{figure}[!htb]
 %   \centering
-%   \begin{subfigure}[b]{0.49\textwidth}
-%     \caption{}
-%     \includegraphics[width=\textwidth]{.pdf}
-%     \label{fig:}
-%   \end{subfigure}
-%   \hfill
-%   \begin{subfigure}[b]{0.49\textwidth}
-%     \caption{}
-%     \includegraphics[width=\textwidth]{.pdf}
-%     \label{fig:}
-%   \end{subfigure}
-%   \caption{}
+%   \caption{Visual Representation of the Largest 8 Clusters}
+%   \includegraphics[width=\textwidth]{wiki_clust.pdf}
+%   \label{fig:wiki_clust}
 % \end{figure}
 
-
-
+\begin{landscape}
 \input{wiki_topics.tex}
+\end{landscape}
 
 
 \begin{appendices}
