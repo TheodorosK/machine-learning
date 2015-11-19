@@ -213,3 +213,16 @@ plot(wiki.sub,
      vertex.frame.color=NA, vertex.size=(log(degree(wiki.sub))+1)*15,
      edge.color=alpha('gray', 0.1), edge.arrow.mode='-')
 PlotDone()
+
+# Export Wiki Cluster Tables --------------------------------------------------
+require(xtable)
+wiki.sub <- induced.subgraph(wiki, membership(cl) %in% topN.idx)
+
+df <- sapply(wiki.sub.member.labels[1:4], function(x) {
+  class.idx <- which(V(wiki.sub)$membership == x)
+  
+  V(wiki.sub)$label[sample(class.idx, 10)]
+})
+
+ExportTable(df, "wiki_topics", "Sample Topics for 4 Largest Clusters",
+            include.rownames = F)
