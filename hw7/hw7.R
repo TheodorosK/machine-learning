@@ -109,10 +109,23 @@ sprintf("%s algorithm mis-classified %d vertices", "label_prop", missed)
 # Warning message:
 #   In cutat(cl, 2) : Cannot have that few communities
 cl = cluster_leading_eigen(karate)
-PlotCommunities(karate, karate.layout, factions, leaders, cl, 
-                'leading_eigen')
-missed <- EvalCommunities(karate, cl, factions)
-sprintf("%s algorithm mis-classified %d vertices", "leading_eigen", missed)
+dg <- as.dendrogram(cl)
+efac1 <- labels(dg[[1]])
+efac2 <- labels(dg[[2]])
+groups <- abs(as.numeric(V(karate)$name %in% efac1)-2)
+
+# This alg gets 10 vertices wrong
+sum(groups!=factions)
+
+graph.color <- paste(gg_color_hue(max(groups)), "FF", sep="")[groups]
+graph.color[!leaders] <- adjustcolor(graph.color[!leaders], alpha.f = 0.33)
+PlotSetup("leading_eigen")
+plot(karate, layout = karate.layout, 
+     vertex.shape = c("square", "circle")[factions], 
+     vertex.color = graph.color,
+     vertex.size = 15,
+     vertex.label.color = "#000000")
+PlotDone()
 
 # Multi-level optimization of modularity
 cl = cluster_louvain(karate)
