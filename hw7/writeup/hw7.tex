@@ -11,6 +11,8 @@ University of Chicago Booth School of Business}
 
 \section{Zachary's Karate Club}
 
+Zachary's Karate Club is a network describing a university karate club from the early 1970's. The network has 34 vertices and 78 edges as depicted in \cref{fig:karate_network}. The network was observed and described by Wayne W. Zachary during and after it split into two factions (led by John A and Mr. Hi, denoted with blue circles and red squares, respectively). Because we know the features of the network and the factions into which it split, it is an ideal data set on which to test out various community detection algorithms.
+
 \begin{figure}[!htb]
 \centering
 \caption{Zachary's Karate Club and Factions}
@@ -18,18 +20,19 @@ University of Chicago Booth School of Business}
 \label{fig:karate_network}
 \end{figure}
 
-We used the following algorithms to try and determine the underlying community structure in Zachary's karate club. The results are visualized in \cref{fig:edge_betweenness}-\cref{fig:walktrap}.
+We used the algorithms listed below to try and determine the underlying community structure in Zachary's karate club. The results are visualized in \cref{fig:edge_betweenness}-\cref{fig:walktrap}. The hierarchical algorithm can be cut into two groups and compared directly to the ground truth of the observed factions, but algorithms with more groups are tougher to evaluate. If an algorithm produces more than two groups, as long as the groups are contained entirely within one faction or the other, we consider there to be no mis-classifications. In the associated figures, members of Mr. H's faction are in squares and members of John A's faction are in circles; the colors are set according to algorithmically-determined groups.
 \begin{itemize}
 \item \textbf{Edge Betweenness}: A hierarchical algorithm that we cut to obtain two groups. The default setting is for the algorithm to consider the network edge weights, but in doing so the algorithm misclassifies two vertices (Actors 3 and 14; see \cref{fig:edge_betweenness}). By ignoring the edge weights, the algorithm only mis-classifies one vertex (Actor 3). 
 \item \textbf{Greedy Modularity Optimization (Fast Greedy)}: A hierarchical algorithm that we cut to obtain two groups. It correctly predicts the faction for all vertices (see \cref{fig:fast_greedy}).
-\item \textbf{Infomap}: A non-hierarchical algorithm that splits the data into 3 groups. Two groups are made entirely of members from Mr. Hi's faction, so there are no mis-classifications.
-\item \textbf{Propagating Labels}: A non-hierarchical algorithm that splits the data into 3 groups. Two groups are made entirely of members from Mr. Hi's faction, so there are no mis-classifications. 
-\item \textbf{Leading Eigenvector}: A hierarchical algorithm that we cut to obtain two groups. ???? WHAT'S THE DEAL?
-\item \textbf{Multi-level Modularity Optimization (Louvain)}: A non-hierarchical algorithm that splits the data into X groups.
-\item \textbf{Optimal Structure}: A non-hierarchical algorithm that splits the data into X groups.
-\item \textbf{Statistical Mechanics (Spinglass)}: A non-hierarchical algorithm that splits the data into X groups.
-\item \textbf{Short Random Walks (Walktrap)}: A hierarchical algorithm that we cut to obtain two groups. It correctly predicts the faction for all vertices.
+\item \textbf{Infomap}: A non-hierarchical algorithm that splits the data into 3 groups. Two groups are made entirely of members from Mr. Hi's faction (see \cref{fig:infomap}).
+\item \textbf{Propagating Labels}: A non-hierarchical algorithm that splits the data into 3 groups. Two groups are made entirely of members from Mr. Hi's faction. It classifies the networks into the same groups as the Infomap algorithm (see \cref{fig:label_prop}).  
+\item \textbf{Leading Eigenvector}: This is another hierarchical algorithm, although the basic \textsf{cutat} function produces an error when we attempt to break the network into two communities.\footnote{\textsf{Warning message: In cutat(cl, 2) : Cannot have that few communities}} As an alternative, we visualize the network as a dendrogram and use the two largest branches as our estimate of the factions. The restuls are not good; five actors in each group are mis-categorized. The results are in \cref{fig:leading_eigen}. This is far and away the worst algorithm for this data set, although it may be because of the implementation in \textsf{igraph}.
+\item \textbf{Multi-level Modularity Optimization (Louvain)}: A non-hierarchical algorithm that splits the data into 4 groups. Two groups are made entirely of members from Mr. Hi's faction and two groups are made entirely of members from John A's faction. This algorithm breaks Mr. Hi's faction into the same groups that the Infomap and Propagating Labels algorithms do (see \cref{fig:louvain}).
+\item \textbf{Optimal Structure}: A non-hierarchical algorithm that splits the data into 4 groups. The four groups are identical to those identified by the Multi-Level Modularity Optimization algorithm above (see \cref{fig:optimal}).
+\item \textbf{Statistical Mechanics (Spinglass)}: A non-hierarchical algorithm that splits the data into 4 groups. The groups are nearly the same as those identified in the Optimal Structure and Multi-Level Modularity Optimation algorithms, except Actor 24 has switched groups within John A's faction (see \cref{fig:spinglass}).
+\item \textbf{Short Random Walks (Walktrap)}: A hierarchical algorithm that we cut to obtain two groups. It correctly predicts the faction for all vertices (see \cref{fig:walktrap}).
 \end{itemize}
+Ultimately, all algorithms besides the Edge Betweenness and Leading Eigenvector algorithm correctly break the network into the correct groups, either the observed factions or subsets of the observed factions.
 
 %%%%%%%%%%%%%%%%%%%% KARATE COMMUNITY GRAPHS %%%%%%%%%%%%%%%%%%%%
 \begin{figure}
@@ -41,7 +44,7 @@ We used the following algorithms to try and determine the underlying community s
 \end{subfigure}
 \hfill
 \begin{subfigure}[b]{0.32\textwidth}
-\caption{Greedy Modularity \\Optimization}
+\caption{Greedy Optimization}
 \includegraphics[width=\textwidth,trim={0.75in 0.75in 0.75in 0.75in}, clip=True]{fast_greedy.pdf}
 \label{fig:fast_greedy}
 \end{subfigure}
@@ -65,7 +68,7 @@ We used the following algorithms to try and determine the underlying community s
 \end{subfigure}
 \hfill
 \begin{subfigure}[b]{0.32\textwidth}
-\caption{Multi-level Modularity \\Optimization}
+\caption{Multi-level Optimization}
 \includegraphics[width=\textwidth,trim={0.75in 0.75in 0.75in 0.75in}, clip=True]{louvain.pdf}
 \label{fig:louvain}
 \end{subfigure}
@@ -92,6 +95,36 @@ We used the following algorithms to try and determine the underlying community s
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Wikipedia}
+\subsection{Clustering}
+Due to the size of the data-set, we apply at the first clustering algorithm that we got working on the data.
+
+\begin{figure}
+  \centering
+  \begin{subfigure}[b]{0.49\textwidth}
+    \caption{Cluster-Size}
+    \includegraphics[width=\textwidth]{wiki_cl_hist.pdf}
+    \label{fig:wiki_size}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.49\textwidth}
+    \caption{Vertex Connectedness}
+    \includegraphics[width=\textwidth]{wiki_edge_hist.pdf}
+    \label{fig:wiki_conn}
+  \end{subfigure}
+  \caption{}
+\end{figure}
+
+% \begin{figure}[!htb]
+%   \centering
+%   \caption{Visual Representation of the Largest 8 Clusters}
+%   \includegraphics[width=\textwidth]{wiki_clust.pdf}
+%   \label{fig:wiki_clust}
+% \end{figure}
+
+\begin{landscape}
+\input{wiki_topics.tex}
+\end{landscape}
+
 
 \begin{appendices}
 
