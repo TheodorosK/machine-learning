@@ -142,9 +142,50 @@ PlotCommunities(karate, karate.layout, factions, leaders, cl,
 missed <- EvalCommunities(karate, cl, factions)
 sprintf("%s algorithm mis-classified %d vertices", "walktrap", missed)
 
-###############################################################################
 # WIKIPEDIA ###################################################################
-###############################################################################
+wiki <- LoadCacheTagOrRun("wikipedia", function() {
+  require(curl)
+  curl_download('https://github.com/ChicagoBoothML/MachineLearning_Fall2015/blob/master/Programming%20Scripts/Lecture08/hw/wikipedia.gml?raw=true',
+                'wikipedia.gml', quiet=F, mode="wb")
+  return(read.graph('wikipedia.gml', format='gml'))
+})
 
 # Vizualize -------------------------------------------------------------------
+PlotCluster <- function(network, cl) {
+  if(is.hierarchical(cl))
+    groups <- cutat(cl, 2)
+  else
+    groups <- membership(cl)
+  
+  graph.color <- paste(gg_color_hue(max(groups)), "FF", sep="")[groups]
+#   graph.color[!leaders] <- adjustcolor(graph.color[!leaders], alpha.f = 0.33)
+  
+#   PlotSetup(fname)
+  plot(network, 
+       vertex.color = graph.color,
+       vertex.label.color = "#000000")
+#        vertex.size = 15,
+#   PlotDone()
+}
+
+# wiki.layout <- layout_nicely(wiki)
+cl <- LoadCacheTagOrRun('wiki_infomap', function() cluster_infomap(wiki))
+
+V(wiki)$membership <- membership(cl)
+top10.idx <- order(table(membership(cl)), decreasing = T)[1:10]
+wiki.sub <- induced.subgraph(wiki, membership(cl) %in% top10.idx)
+
+member.table <- table(V(wiki.sub)$membership)
+require(scales)
+wiki.sub.palette <- alpha(gg_color_hue(length(member.table)), 0.5)
+V(wiki.sub)$color <- wiki.sub.palette[
+  sapply(V(wiki.sub)$membership, function(x) which(x == names(member.table)))]
+V(wiki.sub)$label.color <- alpha(V(wiki.sub)$color, 1.0)
+
+toKeep <- sample(length(V(wiki.sub)), 20)
+V(wiki.sub)$label[-toKeep] <- ""
+plot(wiki.sub, vertex.frame.color=NA, vertex.size=1, edge.arrow.mode='-')
+
+# PlotCluster(wiki, cl)
+
 
