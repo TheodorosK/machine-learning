@@ -166,7 +166,8 @@ wiki <- LoadCacheTagOrRun("wikipedia", function() {
 })
 
 # Cluster and Assign Membership -----------------------------------------------
-cl <- LoadCacheTagOrRun('wiki_infomap', function() cluster_infomap(wiki))
+# cl <- LoadCacheTagOrRun('wiki_infomap', function() cluster_infomap(wiki))
+cl <- LoadCacheTagOrRun('wiki_walktrap', function() cluster_walktrap(wiki))
 V(wiki)$membership <- membership(cl)
 
 # Vizualize Clusters and Connectedness ----------------------------------------
@@ -210,18 +211,18 @@ for (x in wiki.sub.member.labels) {
 
 PlotSetup('wiki_clust')
 plot(wiki.sub, 
-     vertex.frame.color=NA, vertex.size=(log(degree(wiki.sub))+1)*15,
+     vertex.frame.color=NA, vertex.size=(log(degree(wiki.sub))+1)*5,
      edge.color=alpha('gray', 0.1), edge.arrow.mode='-')
 PlotDone()
 
 # Export Wiki Cluster Tables --------------------------------------------------
 require(xtable)
-wiki.sub <- induced.subgraph(wiki, membership(cl) %in% topN.idx)
+wiki.sub.tab <- induced.subgraph(wiki, membership(cl) %in% topN.idx)
 
 df <- sapply(wiki.sub.member.labels[1:4], function(x) {
-  class.idx <- which(V(wiki.sub)$membership == x)
+  class.idx <- which(V(wiki.sub.tab)$membership == x)
   
-  V(wiki.sub)$label[sample(class.idx, 10)]
+  V(wiki.sub.tab)$label[sample(class.idx, 10)]
 })
 
 ExportTable(df, "wiki_topics", "Sample Topics for 4 Largest Clusters",
