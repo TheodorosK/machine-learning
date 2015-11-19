@@ -2,8 +2,10 @@ rm(list=ls())
 
 # Housekeeping ----------------------------------------------------------------
 
-library(igraph)
-library(igraphdata)
+require(igraph)
+require(igraphdata)
+require(ggplot2)
+require(scales)
 
 source("../utils/source_me.R", chdir=T)
 CreateDefaultPlotOpts(WriteToFile = T)
@@ -150,42 +152,51 @@ wiki <- LoadCacheTagOrRun("wikipedia", function() {
   return(read.graph('wikipedia.gml', format='gml'))
 })
 
-# Vizualize -------------------------------------------------------------------
-PlotCluster <- function(network, cl) {
-  if(is.hierarchical(cl))
-    groups <- cutat(cl, 2)
-  else
-    groups <- membership(cl)
-  
-  graph.color <- paste(gg_color_hue(max(groups)), "FF", sep="")[groups]
-#   graph.color[!leaders] <- adjustcolor(graph.color[!leaders], alpha.f = 0.33)
-  
-#   PlotSetup(fname)
-  plot(network, 
-       vertex.color = graph.color,
-       vertex.label.color = "#000000")
-#        vertex.size = 15,
-#   PlotDone()
+# Cluster and Assign Membership -----------------------------------------------
+cl <- LoadCacheTagOrRun('wiki_infomap', function() cluster_infomap(wiki))
+V(wiki)$membership <- membership(cl)
+
+# Vizualize Clusters and Connectedness ----------------------------------------
+PlotSetup("wiki_cl_hist")
+g <- ggplot() + 
+  geom_histogram(aes(x=as.vector(membership(cl))), fill="dodgerblue") +
+  theme_bw() + xlab("Custer Size") + ylab("# of Clusters")
+plot(g)
+PlotDone()
+
+PlotSetup("wiki_edge_hist")
+g <- ggplot() + geom_histogram(aes(x=degree(wiki)), fill="dodgerblue", drop=F) +
+  theme_bw() + scale_x_log10() + scale_y_log10() +
+  xlab("Connectedness")
+plot(g)
+PlotDone()
+
+# Visualize Clusters ----------------------------------------------------------
+# Create wiki.sub from the largest N clusters.
+topN.idx <- order(table(membership(cl)), decreasing = T)[1:8]
+wiki.sub <- induced.subgraph(wiki, membership(cl) %in% topN.idx)
+
+# Create a table for the wiki.sub membership
+wiki.sub.member.labels <- levels(as.factor(V(wiki.sub)$membership))
+
+wiki.sub.palette <- alpha(gg_color_hue(length(wiki.sub.member.labels)), 0.01)
+V(wiki.sub)$color <- wiki.sub.palette[
+  sapply(V(wiki.sub)$membership, 
+         function(x) which(x == wiki.sub.member.labels))]
+# V(wiki.sub)$label.color <- alpha(V(wiki.sub)$color, 1.0)
+V(wiki.sub)$label.color <- 
+  alpha(adjustcolor(V(wiki.sub)$color, 
+                    red.f=0.625, green.f=0.625, blue=0.625), 1)
+
+for (x in wiki.sub.member.labels) {
+  class.idx <- which(V(wiki.sub)$membership == x)
+  toKeep <- order(degree(wiki.sub, class.idx), decreasing=T)[1:2]
+#   toKeep <- sample(class.idx, 2)
+  V(wiki.sub)$label[class.idx][-toKeep] <- ""
 }
 
-# wiki.layout <- layout_nicely(wiki)
-cl <- LoadCacheTagOrRun('wiki_infomap', function() cluster_infomap(wiki))
-
-V(wiki)$membership <- membership(cl)
-top10.idx <- order(table(membership(cl)), decreasing = T)[1:10]
-wiki.sub <- induced.subgraph(wiki, membership(cl) %in% top10.idx)
-
-member.table <- table(V(wiki.sub)$membership)
-require(scales)
-wiki.sub.palette <- alpha(gg_color_hue(length(member.table)), 0.5)
-V(wiki.sub)$color <- wiki.sub.palette[
-  sapply(V(wiki.sub)$membership, function(x) which(x == names(member.table)))]
-V(wiki.sub)$label.color <- alpha(V(wiki.sub)$color, 1.0)
-
-toKeep <- sample(length(V(wiki.sub)), 20)
-V(wiki.sub)$label[-toKeep] <- ""
-plot(wiki.sub, vertex.frame.color=NA, vertex.size=1, edge.arrow.mode='-')
-
-# PlotCluster(wiki, cl)
-
-
+PlotSetup('wiki_clust')
+plot(wiki.sub, 
+     vertex.frame.color=NA, vertex.size=(log(degree(wiki.sub))+1)*15,
+     edge.color=alpha('gray', 0.1), edge.arrow.mode='-')
+PlotDone()
