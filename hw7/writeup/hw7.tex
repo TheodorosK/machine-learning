@@ -26,13 +26,13 @@ We used the algorithms listed below to try and determine the underlying communit
 \item \textbf{Greedy Modularity Optimization (Fast Greedy)}: A hierarchical algorithm that we cut to obtain two groups. It correctly predicts the faction for all vertices (see \cref{fig:fast_greedy}).
 \item \textbf{Infomap}: A non-hierarchical algorithm that splits the data into 3 groups. Two groups are made entirely of members from Mr. Hi's faction (see \cref{fig:infomap}).
 \item \textbf{Propagating Labels}: A non-hierarchical algorithm that splits the data into 3 groups. Two groups are made entirely of members from Mr. Hi's faction. It classifies the networks into the same groups as the Infomap algorithm (see \cref{fig:label_prop}).  
-\item \textbf{Leading Eigenvector}: A hierarchical algorithm that we cut to obtain two groups. ???? WHAT'S THE DEAL?
+\item \textbf{Leading Eigenvector}: This is another hierarchical algorithm, although the basic \textsf{cutat} function produces an error when we attempt to break the network into two communities.\footnote{\textsf{Warning message: In cutat(cl, 2) : Cannot have that few communities}} As an alternative, we visualize the network as a dendrogram and use the two largest branches as our estimate of the factions. The restuls are not good; five actors in each group are mis-categorized. The results are in \cref{fig:leading_eigen}. This is far and away the worst algorithm for this data set, although it may be because of the implementation in \textsf{igraph}.
 \item \textbf{Multi-level Modularity Optimization (Louvain)}: A non-hierarchical algorithm that splits the data into 4 groups. Two groups are made entirely of members from Mr. Hi's faction and two groups are made entirely of members from John A's faction. This algorithm breaks Mr. Hi's faction into the same groups that the Infomap and Propagating Labels algorithms do (see \cref{fig:louvain}).
 \item \textbf{Optimal Structure}: A non-hierarchical algorithm that splits the data into 4 groups. The four groups are identical to those identified by the Multi-Level Modularity Optimization algorithm above (see \cref{fig:optimal}).
 \item \textbf{Statistical Mechanics (Spinglass)}: A non-hierarchical algorithm that splits the data into 4 groups. The groups are nearly the same as those identified in the Optimal Structure and Multi-Level Modularity Optimation algorithms, except Actor 24 has switched groups within John A's faction (see \cref{fig:spinglass}).
 \item \textbf{Short Random Walks (Walktrap)}: A hierarchical algorithm that we cut to obtain two groups. It correctly predicts the faction for all vertices (see \cref{fig:walktrap}).
 \end{itemize}
-Ultimately, all algorithms besides the Edge Betweenness algorithm correctly break the network into the correct groups, either the observed factions or subsets of the observed factions.
+Ultimately, all algorithms besides the Edge Betweenness and Leading Eigenvector algorithm correctly break the network into the correct groups, either the observed factions or subsets of the observed factions.
 
 %%%%%%%%%%%%%%%%%%%% KARATE COMMUNITY GRAPHS %%%%%%%%%%%%%%%%%%%%
 \begin{figure}
