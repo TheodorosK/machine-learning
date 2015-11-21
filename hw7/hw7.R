@@ -225,6 +225,6 @@ df <- sapply(wiki.sub.member.labels[1:4], function(x) {
   V(wiki.sub.tab)$label[sample(class.idx, 10)]
 })
 
-ExportTable(strtrim(df, 15), "wiki_topics",
+ExportTable(strtrim(df, 20), "wiki_topics",
             "Sample Topics for 4 Largest Clusters",
             include.rownames = F)
