@@ -1,4 +1,5 @@
 final-project/data/*
+final-project/gpu-tutorial/*.pickle
 sandbox/*
 data/wikipedia.gml
 
