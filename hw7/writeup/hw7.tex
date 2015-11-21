@@ -96,23 +96,27 @@ Ultimately, all algorithms besides the Edge Betweenness and Leading Eigenvector 
 
 \section{Wikipedia}
 \subsection{Clustering}
-Due to the size of the data-set, we apply at the first clustering algorithm that we got working on the data.
+Due to the size of and the time required to cluster our data-set, we apply only one of the better performing algorithms from the previous section.  Of two that correctly partitioned the Karate data in the previous section (\textbf{Greedy} and \textbf{Short Random Walk}) we choose to apply \textbf{Short Random Walk} here.
 
-\begin{figure}
+Before looking at the results of the clustering algorithm, we first look at node connectedness to see if we can learn anything we can learn from these data.  \Cref{fig:wiki_conn} shows that many articles have a few connections and few nodes have many connections with a, roughly, linear decline between these two extremes in log-log space.  Because of the large number of poorly connected articles, we'd expect the clustering algorithm to generate a large number of small clusters as it struggles to find common groups for these articles.  Likewise we expect that the well-connected clusters should be easily identifiable and clustered together.  \Cref{fig:wiki_size} shows a histogram of the cluster-size; as we predict we do see a large number of small clusters.
+
+\begin{figure}[!htb]
   \centering
-  \begin{subfigure}[b]{0.49\textwidth}
-    \caption{Cluster-Size}
-    \includegraphics[width=\textwidth]{wiki_cl_hist.pdf}
-    \label{fig:wiki_size}
-  \end{subfigure}
-  \hfill
   \begin{subfigure}[b]{0.49\textwidth}
     \caption{Vertex Connectedness}
     \includegraphics[width=\textwidth]{wiki_edge_hist.pdf}
     \label{fig:wiki_conn}
   \end{subfigure}
-  \caption{}
+  \hfill
+  \begin{subfigure}[b]{0.49\textwidth}
+    \caption{Cluster-Size}
+    \includegraphics[width=\textwidth]{wiki_cl_hist.pdf}
+    \label{fig:wiki_size}
+  \end{subfigure}
+  \caption{Cluster and Node Histograms}
 \end{figure}
+
+
 
 % \begin{figure}[!htb]
 %   \centering
@@ -121,10 +125,7 @@ Due to the size of the data-set, we apply at the first clustering algorithm that
 %   \label{fig:wiki_clust}
 % \end{figure}
 
-\begin{landscape}
 \input{wiki_topics.tex}
-\end{landscape}
-
 
 \begin{appendices}
 
@@ -134,7 +135,7 @@ Due to the size of the data-set, we apply at the first clustering algorithm that
 
 % \input{.tex}
 
-% \begin{figure}
+% \begin{figure}[!htb]
 %   \centering
 %   \begin{subfigure}[b]{0.49\textwidth}
 %     \caption{}
