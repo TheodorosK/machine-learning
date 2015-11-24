@@ -48,8 +48,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 
 		lyr = lasagne.layers.Conv2DLayer(
 			lyr, num_filters=6, filter_size=(4,4),
-			nonlinearity=self.__hidden_layer_nonlinearity,
-			W=lasagne.init.GlorotUniform())
+			nonlinearity=self.__hidden_layer_nonlinearity)
 		lyr = lasagne.layers.MaxPool2DLayer(lyr, pool_size=(2,2))
 
 		for i in range(len(self.__hidden_layer_widths)):
@@ -61,35 +60,34 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 
 			if (self.__hidden_drop_rate[i] != 0):
 				lyr = lasagne.layers.DropoutLayer(
-					lyr,p=self.__hidden_drop_rate[i])
+					lyr, p=self.__hidden_drop_rate[i])
 
 		self.network = lasagne.layers.DenseLayer(lyr,
-			num_units=self.__output_width)
+			num_units=self.__output_width,
+			nonlinearity=self.__hidden_layer_nonlinearity)
 
 		self.__BuildTheanoFns()
 
 	def Predict(self, X):
-		prediction = lasagne.layers.get_output(self.network, X, deterministic=True).eval()
-		return(np.argmax(prediction, 1))
+		return(lasagne.layers.get_output(self.network, X, deterministic=True).eval())
 
 	def __BuildTheanoFns(self):
 		prediction = lasagne.layers.get_output(self.network)
 		loss = lasagne.objectives.squared_error(prediction, self.__target_var)
+		loss = lasagne.objectives.aggregate(loss, mode='mean')
 
-		all_params = lasagne.layers.get_all_params(self.network)
-		updates = lasagne.updates.nesterov_momentum(loss, all_params, 
-			learning_rate=0.01, momentum=0.9)
+		params = lasagne.layers.get_all_params(self.network, trainable=True)
+		updates = lasagne.updates.nesterov_momentum(loss, params, 
+			learning_rate=1e-4, momentum=0.9)
 
 
 		# Create a loss expression for validation/testing. The crucial difference
 		# here is that we do a deterministic forward pass through the network,
 		# disabling dropout layers.
-		test_prediction = lasagne.layers.get_output(
-			self.network, deterministic=True)
-		test_loss = lasagne.objectives.squared_error(
-			test_prediction, self.__target_var)
+		test_prediction = lasagne.layers.get_output(self.network, deterministic=True)
+		test_loss = lasagne.objectives.squared_error(test_prediction, self.__target_var)
+		test_loss = lasagne.objectives.aggregate(test_loss, mode='mean')
 
-		self.prediction = prediction
 		self.train_fn = theano.function([self.__input_var, self.__target_var], loss,
 			updates=updates)
 		self.val_fn = theano.function([self.__input_var, self.__target_var], test_loss)

@@ -49,7 +49,7 @@ mlp.BuildNetwork()
 # Finally, launch the training loop.
 print("Starting training...")
 # We iterate over epochs:
-num_epochs=5
+num_epochs=10
 for epoch in range(num_epochs):
     # In each epoch, we do a full pass over the training data:
     train_err = 0
@@ -91,7 +91,7 @@ print("Final results:")
 print("  test loss:\t\t\t{:.6f}".format(test_err / test_batches))
 
 # Predict the first 500 (batchsize)
-# y_pred = mlp.Predict(data.test_X[0:batchsize])
+y_pred = mlp.Predict(test_X[0:batchsize])
 
 import code
 code.interact(local=locals())
