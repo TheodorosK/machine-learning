@@ -164,3 +164,6 @@ sympy-plots-for-*.tex/
 # WinEdt
 *.bak
 *.sav
+
+# Cached Python Binaries
+*.pyc
