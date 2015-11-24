@@ -46,6 +46,12 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 		if (self.__input_drop_rate != 0):
 			lyr = lasagne.layers.DropoutLayer(lyr, p=self.__input_drop_rate)
 
+		lyr = lasagne.layers.Conv2DLayer(
+			lyr, num_filters=6, filter_size=(4,4),
+			nonlinearity=self.__hidden_layer_nonlinearity,
+			W=lasagne.init.GlorotUniform())
+		lyr = lasagne.layers.MaxPool2DLayer(lyr, pool_size=(2,2))
+
 		for i in range(len(self.__hidden_layer_widths)):
 			lyr = lasagne.layers.DenseLayer(
 				lyr, 
@@ -68,10 +74,10 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 
 	def __BuildTheanoFns(self):
 		prediction = lasagne.layers.get_output(self.network)
-		loss = lasagne.objectives.squared_error(prediction, self.__target_var).mean()
+		loss = lasagne.objectives.squared_error(prediction, self.__target_var)
 
-		params = lasagne.layers.get_all_params(self.network)
-		updates = lasagne.updates.nesterov_momentum(loss, params, 
+		all_params = lasagne.layers.get_all_params(self.network)
+		updates = lasagne.updates.nesterov_momentum(loss, all_params, 
 			learning_rate=0.01, momentum=0.9)
 
 
@@ -81,7 +87,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 		test_prediction = lasagne.layers.get_output(
 			self.network, deterministic=True)
 		test_loss = lasagne.objectives.squared_error(
-			test_prediction, self.__target_var).mean()
+			test_prediction, self.__target_var)
 
 		self.prediction = prediction
 		self.train_fn = theano.function([self.__input_var, self.__target_var], loss,

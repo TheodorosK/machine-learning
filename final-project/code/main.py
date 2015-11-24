@@ -11,7 +11,7 @@ from sklearn.metrics import confusion_matrix
 import fileio
 import perceptron
 
-batchsize = 10
+batchsize = 100
 
 def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
     assert len(inputs) == len(targets)
@@ -25,16 +25,16 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
             excerpt = slice(start_idx, start_idx + batchsize)
         yield inputs[excerpt], targets[excerpt]
 
-fr = fileio.FaceReader("../data/training.csv", "../data/training.pkl.gz", fast_nrows=110)
+fr = fileio.FaceReader("../data/training.csv", "../data/training.pkl.gz", fast_nrows=200)
 fr.Read()
 
 X, Y = fr.GetData()
 
-train_X = X[1:100]
-train_Y = Y[1:100]
+train_X = X[0:100]
+train_Y = Y[0:100]
 
-test_X = X[100:110]
-test_Y = Y[100:110]
+test_X = X[100:200]
+test_Y = Y[100:200]
 
 mlp = perceptron.ConvolutionalMLP(
 	(batchsize, 1, 96, 96), # input shape
@@ -49,13 +49,14 @@ mlp.BuildNetwork()
 # Finally, launch the training loop.
 print("Starting training...")
 # We iterate over epochs:
-num_epochs=3
+num_epochs=5
 for epoch in range(num_epochs):
     # In each epoch, we do a full pass over the training data:
     train_err = 0
     train_batches = 0
     start_time = time.time()
     for batch in iterate_minibatches(train_X, train_Y, batchsize, shuffle=False):
+    	print(train_batches)
         inputs, targets = batch
         train_err += mlp.train_fn(inputs, targets)
         train_batches += 1
@@ -64,6 +65,7 @@ for epoch in range(num_epochs):
     val_err = 0
     val_batches = 0
     for batch in iterate_minibatches(test_X, test_Y, batchsize, shuffle=False):
+    	print(val_batches)
         inputs, targets = batch
         err = mlp.val_fn(inputs, targets)
         val_err += err
@@ -72,8 +74,10 @@ for epoch in range(num_epochs):
     # Then we print the results for this epoch:
     print("Epoch {} of {} took {:.3f}s".format(
         epoch + 1, num_epochs, time.time() - start_time))
-    print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
-    print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
+    # print("  training loss:\t\t{:.6f}".format(train_err / train_batches))
+    # print("  validation loss:\t\t{:.6f}".format(val_err / val_batches))
+    print("  training loss:\t\t{:.6f}".format(train_err))
+    print("  validation loss:\t\t{:.6f}".format(val_err))
 
 # After training, we compute and print the test error:
 test_err = 0
