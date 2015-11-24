@@ -55,15 +55,16 @@ class FaceReader(DataReader):
 		return(X, Y)
 
 	def _Shape(self, X):
-		self.X = (np.asarray(X, dtype='float64') / 255.).reshape(
-			len(X), 1, 96, 96)
+		return((np.asarray(X, dtype='float64') / 255.).reshape(
+			len(X), 1, 96, 96))
 
 	def Read(self):
 		if (self.__fast_nrows is not None):
 			print("Using Fast-Path, CSV Load")
-			X, self.Y = self._ReadCSV()
+			X, Y = self._ReadCSV()
 			self.X = self._Shape(X)
-			return()
+			self.Y = Y
+			return
 
 		if (not os.path.exists(self.__picklefile)):
 			print("Pickle Doesn't Exist, Loading CSV")
@@ -87,4 +88,4 @@ class FaceReader(DataReader):
 		self.Y = Y
 
 	def GetData(self):
-		raise NotImplementedError('Not Implemented')
+		return(self.X, self.Y)

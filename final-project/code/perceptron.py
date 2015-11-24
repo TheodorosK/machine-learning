@@ -31,8 +31,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 		self.__hidden_layer_nonlinearity = hidden_layer_nonlinearity
 		self.__output_width = output_width
 
-		self.__input_var = T.matrix('input')
-		self.__target_var = T.ivector('target')
+		self.__input_var = T.dtensor4('input')
+		self.__target_var = T.dmatrix('target')
 
 		self.network = None
 		self.train_fn = None
@@ -89,7 +89,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 		self.val_fn = theano.function([self.__input_var, self.__target_var], test_loss)
 
 	def __str__(self):
-		return("SimpleMLP: input_shape=%d (dropout=%.2f), output_width=1 "
+		return("SimpleMLP: input_shape=%s (dropout=%.2f), output_width=1 "
 			"(%d categories), %d hidden '%s' layers of size=%s (dropout=%s)" % (
 				self.__input_shape, self.__input_drop_rate, 
 				self.__output_width, len(self.__hidden_layer_widths), 
