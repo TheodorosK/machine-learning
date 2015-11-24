@@ -78,7 +78,7 @@ for epoch in range(num_epochs):
 # After training, we compute and print the test error:
 test_err = 0
 test_batches = 0
-for batch in iterate_minibatches(data.test_X, data.test_Y, batchsize, shuffle=False):
+for batch in iterate_minibatches(test_X, test_Y, batchsize, shuffle=False):
     inputs, targets = batch
     err = mlp.val_fn(inputs, targets)
     test_err += err
