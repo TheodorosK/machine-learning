@@ -23,9 +23,17 @@ def main():
     faces = fileio.FaceReader(
         "../data/training.csv",
         "../data/training.pkl.gz",
-        fast_nrows=110)
+        fast_nrows=None)
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
+
+    # fixme(mdelio) if we drop the nas, we drop a lot of data (2/3 of it).
+    raw_data = faces.get_data()
+    to_keep = ~(np.isnan(raw_data['Y']).any(1))
+    raw_data['X'] = raw_data['X'][to_keep]
+    raw_data['Y'] = raw_data['Y'][to_keep]
+    print "Dropping samples with NaNs: {:3.1f}% dropped".format(
+        float(sum(~to_keep))/float(len(to_keep))*100.)
 
     # class FakeData(object):
     #   def __init__(self):
@@ -40,7 +48,7 @@ def main():
 
     start_time = time.time()
     partitioner = partition.Partitioner(
-        faces.get_data(), {'train': 60, 'validate': 20, 'test': 20})
+        raw_data, {'train': 60, 'validate': 20, 'test': 20})
     partitions = partitioner.run()
 
     print "Partition Took {:.3f}s".format(time.time() - start_time)
@@ -54,7 +62,7 @@ def main():
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
-    batchsize = 20
+    batchsize = 128
     start_time = time.time()
     mlp = perceptron.ConvolutionalMLP(
         (batchsize, 1, 96, 96),  # input shape
