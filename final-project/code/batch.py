@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''Batch Processing Classes.
 '''
+import sys
 import time
 
 import numpy as np
@@ -26,15 +27,22 @@ class BatchedTrainer(object):
     def __run_batches(data, batchsize, func, shuffle=False):
         accum_err = 0
         batch_cnt = 0
+        sys.stdout.write('[{}]'.format(len(data['X'])/batchsize))
         for indices in BatchedTrainer.__iterate(data, batchsize, shuffle):
             accum_err += func(data['X'][indices], data['Y'][indices])
             batch_cnt += 1
+            sys.stdout.write('.')
+            sys.stdout.flush()
+        print "done"
         return accum_err / (batch_cnt * batchsize)
 
     def __train_one_epoch(self):
+        sys.stdout.write("  train")
         train_rmse = BatchedTrainer.__run_batches(
             self.__dataset['train'], self.__batchsize,
             self.__mlp.train, shuffle=True)
+
+        sys.stdout.write("  valid")
         valid_rmse = BatchedTrainer.__run_batches(
             self.__dataset['validate'], self.__batchsize,
             self.__mlp.validate, shuffle=False)
@@ -72,9 +80,9 @@ class BatchedTrainer(object):
 
         for epoch in range(num_epochs):
             start_time = time.time()
+            print("Epoch {} of {}".format(epoch + 1, num_epochs))
             train_rmse, valid_rmse = self.__train_one_epoch()
-            print("Epoch {} of {} took {:.3f}s".format(
-                epoch + 1, num_epochs, time.time() - start_time))
+            print("  took {:.3f}s".format(time.time() - start_time))
             print "  training loss:\t\t{:.6f}".format(train_rmse)
             print "  validation loss:\t\t{:.6f}".format(valid_rmse)
 

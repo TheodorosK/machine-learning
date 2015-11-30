@@ -40,7 +40,7 @@ def main():
 
     start_time = time.time()
     partitioner = partition.Partitioner(
-        faces.get_data(), {'train': 54.343, 'validate': 25.657, 'test': 20})
+        faces.get_data(), {'train': 60, 'validate': 20, 'test': 20})
     partitions = partitioner.run()
 
     print "Partition Took {:.3f}s".format(time.time() - start_time)
