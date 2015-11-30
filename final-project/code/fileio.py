@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+'''File IO Classes
+'''
 import abc
 import gzip
 import os
@@ -6,86 +8,86 @@ import cPickle as pickle
 
 import numpy as np
 import pandas as pd
-from sklearn import preprocessing
+
 
 class DataReader:
-	__metaclass__ = abc.ABCMeta
-	
-	@abc.abstractmethod
-	def Read(self): pass
+    '''Defines the interface used to read data from disk.
+    '''
+    __metaclass__ = abc.ABCMeta
 
-	@abc.abstractmethod
-	def GetData(self): pass
+    def __init__(self):
+        self._x_values = None
+        self._y_values = None
 
-# class CSVReader(DataReader):
-# 	def __init__(self, trainfile, testfile):
-# 		self.__trainfile = trainfile
-# 		self.__testfile = testfile
+    def _set_xy(self, x_values, y_values):
+        self._x_values = x_values
+        self._y_values = y_values
 
-# 	def _Read(self, filename):
-# 		df = pd.io.parsers.read_csv(filename)
-# 		Y = df['y']
-# 		X = df[filter(lambda c: c != 'y', df.columns.values)]
-# 		return((Y, X))
+    @abc.abstractmethod
+    def load_file(self):
+        '''Loads the file and returns the contents as a dict.
 
-# 	def Read(self):
-# 		train_Y, train_X = self._Read(self.__trainfile)
-# 		test_Y,  test_X  = self._Read(self.__testfile)
-# 		# Encode Categorical Values
-# 		enc = preprocessing.LabelEncoder()
-# 		enc.fit(train_Y)
-# 		self.train_Y = enc.transform(train_Y).astype(np.int32)
-# 		self.test_Y = enc.transform(test_Y).astype(np.int32)
+        Returns:
+            The following format:
+                {'X': <data>, 'Y' = <data>}
+        '''
+        pass
 
-# 		# Encode Floats
-# 		self.train_X = train_X.astype(np.float32)
-# 		self.test_X = test_X.astype(np.float32)
+    def get_data(self):
+        '''Returns the data previously loaded into memory.
+        '''
+        return {'X': self._x_values, 'Y': self._y_values}
+
 
 class FaceReader(DataReader):
-	def __init__(self, filename, picklefile, fast_nrows=None):
-		self.__filename = filename
-		self.__picklefile = picklefile
-		self.__fast_nrows = fast_nrows
+    '''Reads the facial keypoint training data and caches using pickler.
+    '''
+    def __init__(self, filename, picklefile, fast_nrows=None):
+        super(FaceReader, self).__init__()
+        self.__filename = filename
+        self.__picklefile = picklefile
+        self.__fast_nrows = fast_nrows
 
-	def _ReadCSV(self):
-		data = pd.read_csv(self.__filename, sep='\s|,', engine='python', 
-			header=1, index_col=False, nrows=self.__fast_nrows).values
-		X = data[:, 30:]
-		Y = data[:, 0:30]
-		return(X, Y)
+    @staticmethod
+    def __read_csv_file(filename, nrows):
+        data = pd.read_csv(
+            filename, sep=r'\s|,', engine='python',
+            header=1, index_col=False, nrows=nrows).values
+        x_values = data[:, 30:]
+        y_values = data[:, 0:30]
+        return (x_values, y_values)
 
-	def _Shape(self, X):
-		return((np.asarray(X, dtype='float64') / 255.).reshape(
-			len(X), 1, 96, 96))
+    @staticmethod
+    def __reshape_data(x_values):
+        return((np.asarray(x_values, dtype='float64') / 255.).reshape(
+            len(x_values), 1, 96, 96))
 
-	def Read(self):
-		if (self.__fast_nrows is not None):
-			print("Using Fast-Path, CSV Load")
-			X, Y = self._ReadCSV()
-			self.X = self._Shape(X)
-			self.Y = Y
-			return
+    def load_file(self):
+        if self.__fast_nrows is not None:
+            print "Using Fast-Path, CSV Load"
+            x_values, y_values = FaceReader.__read_csv_file(
+                self.__filename, self.__fast_nrows)
+            self._set_xy(FaceReader.__reshape_data(x_values), y_values)
+            return
 
-		if (not os.path.exists(self.__picklefile)):
-			print("Pickle Doesn't Exist, Loading CSV")
-			X, Y = self._ReadCSV()
-			print("Creating Pickle File")
-			f = gzip.open(self.__picklefile, 'wb')
-			p = pickle.Pickler(f)
-			p.dump(X)
-			p.dump(Y)
-			f.close()
-			assert(os.path.exists(self.__picklefile))
+        if not os.path.exists(self.__picklefile):
+            print "Pickle Doesn't Exist, Loading CSV"
+            x_values, y_values = FaceReader.__read_csv_file(
+                self.__filename, self.__fast_nrows)
+            print "Creating Pickle File"
+            pickle_fd = gzip.open(self.__picklefile, 'wb')
+            pickler = pickle.Pickler(pickle_fd)
+            pickler.dump(x_values)
+            pickler.dump(y_values)
+            pickle_fd.close()
+            assert os.path.exists(self.__picklefile)
 
-		print("Loading Pickle File")
-		f = gzip.open(self.__picklefile, 'rb')
-		p = pickle.Unpickler(f)
-		X = p.load()
-		Y = p.load()
-		f.close()
+        print "Loading Pickle File"
+        pickle_fd = gzip.open(self.__picklefile, 'rb')
+        unpickler = pickle.Unpickler(pickle_fd)
+        x_values = unpickler.load()
+        y_values = unpickler.load()
+        pickle_fd.close()
 
-		self.X = self._Shape(X)
-		self.Y = Y
-
-	def GetData(self):
-		return(self.X, self.Y)
+        self._set_xy(FaceReader.__reshape_data(x_values), y_values)
+        return self.get_data()
