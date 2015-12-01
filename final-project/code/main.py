@@ -83,9 +83,10 @@ def real_main(options):
     print "Tee done; subsequent prints appear on terminal and console_log.txt"
 
     #
-    # Log the current git revision for reproducibility
+    # Log the current git revision/cmdline for reproducibility
     #
-    print "git revision = %s" % get_git_revision_hash()
+    print "git rev = %s" % get_git_revision_hash()
+    print "cmdline = '%s'" % " ".join(sys.argv)
 
     # Load the nnet_config
     nnet_config = load_nnet_config(config_file_path, options)
