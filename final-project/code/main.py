@@ -88,20 +88,22 @@ def real_main(options):
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
-    # fixme(mdelio) if we drop the NaNs, we drop a lot of data (2/3 of it).
-    # if we don't though, our loss function is invalid, which means our model
-    # cannot train.
+    #
+    # Map/Drop NaNs
+    #
     raw_data = faces.get_data()
-    if options.map_nans is not None:
-        to_replace = np.isnan(raw_data['Y'])
-        raw_data['Y'][to_replace] = options.map_nans
-        print "Replaced NaN with cardinal value of %d" % options.map_nans
-    else:
+    if options.drop_nans:
         to_keep = ~(np.isnan(raw_data['Y']).any(1))
         raw_data['X'] = raw_data['X'][to_keep]
         raw_data['Y'] = raw_data['Y'][to_keep]
         print "Dropping samples with NaNs: {:3.1f}% dropped".format(
             float(sum(~to_keep))/float(len(to_keep))*100.)
+    else:
+        to_replace = np.isnan(raw_data['Y'])
+        raw_data['Y'][to_replace] = options.nan_cardinal
+        print "Replaced NaNs with cardinal value of %d [%3.1f%% of data]" % (
+            options.nan_cardinal,
+            float(np.sum(to_replace))/float(to_replace.size)*100.)
 
     #
     # Partition the Dataset
@@ -206,10 +208,13 @@ def main():
         default=None,
         help="rows from the dataset to use [default: all]")
     data_group.add_option(
-        '--map_nans', dest='map_nans', type="int", metavar="VALUE",
-        default=None,
-        help=("maps nan values to specified value or drops them from the "
-              "dataset [default: drop]"))
+        '--drop_nans', dest='drop_nans', action="store_true",
+        help=("option to drop NaNs instead of mapping to cardinal "
+              "[default: map]"))
+    data_group.add_option(
+        '--nan_cardinal', dest='nan_cardinal', type='int', metavar="VALUE",
+        default=-1,
+        help=("cardinal value to use when mapping NaNs [default: %default]"))
     parser.add_option_group(data_group)
 
     options, _ = parser.parse_args()
