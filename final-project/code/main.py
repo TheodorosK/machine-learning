@@ -18,15 +18,23 @@ import perceptron
 
 
 class Tee(object):
+    '''Tees file descriptors so that writes are made to all simultaneously.
+    '''
     def __init__(self, *files):
         self.files = files
 
     def write(self, obj):
+        '''Writes to all file descriptors.
+        '''
+        # pylint: disable=invalid-name
         for f in self.files:
             f.write(obj)
             f.flush()  # If you want the output to be visible immediately
 
     def flush(self):
+        '''Flushes all file descriptors.
+        '''
+        # pylint: disable=invalid-name
         for f in self.files:
             f.flush()
 
