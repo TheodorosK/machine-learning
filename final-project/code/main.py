@@ -6,6 +6,7 @@ import datetime
 import json
 import optparse
 import os
+import subprocess
 import sys
 import time
 
@@ -38,6 +39,12 @@ class Tee(object):
         # pylint: disable=invalid-name
         for f in self.files:
             f.flush()
+
+
+def get_git_revision_hash():
+    '''Returns the current git revision as a string
+    '''
+    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip()
 
 
 def load_nnet_config(filename, options):
@@ -73,6 +80,12 @@ def real_main(options):
     # Tee the output to a logfile.
     console_fd = open('console_log.txt', 'a')
     sys.stdout = Tee(sys.stdout, console_fd)
+    print "Tee done; subsequent prints appear on terminal and console_log.txt"
+
+    #
+    # Log the current git revision for reproducibility
+    #
+    print "git revision = %s" % get_git_revision_hash()
 
     # Load the nnet_config
     nnet_config = load_nnet_config(config_file_path, options)
