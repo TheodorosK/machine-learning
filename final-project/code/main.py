@@ -59,7 +59,7 @@ def main(options):
     faces = fileio.FaceReader(
         "../../data/training.csv",
         "../../data/training.pkl.gz",
-        fast_nrows=110)
+        fast_nrows=options.num_rows)
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
@@ -87,12 +87,10 @@ def main(options):
         print("%20s X.shape=%s, Y.shape=%s" % (
             k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
 
-    # fixme(mdelio) should we pickle here for reproducibility/interruptibiity?
-
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
-    batchsize = 20
+    batchsize = options.batchsize
     start_time = time.time()
     mlp = perceptron.ConvolutionalMLP(
         (batchsize, 1, 96, 96),  # input shape
@@ -118,11 +116,12 @@ def main(options):
     loss_log = data_logger.CSVEpochLogger(
         "loss_%05d.csv", "loss.csv",
         np.concatenate((['train_loss'], faces.get_labels()['Y'])))
-    resumer = batch.TrainingResumer(mlp, "epochs_done.txt",
-                                    "state_%05d.pkl.gz", 2)
+    resumer = batch.TrainingResumer(
+        mlp, "epochs_done.txt", "state_%05d.pkl.gz",
+        options.save_state_interval)
     trainer = batch.BatchedTrainer(mlp, batchsize, partitions,
                                    loss_log, resumer)
-    trainer.train(3)
+    trainer.train(options.num_epochs)
 
     y_pred = trainer.predict_y(partitions['test']['X'])
     print y_pred[0]
@@ -134,10 +133,32 @@ def main(options):
 # Parse Arguments and call main.
 #
 if __name__ == "__main__":
+    #
+    # Create list of options and parse them.
+    #
     parser = optparse.OptionParser()
     parser.add_option(
-        "-d", "--data-dir", dest='run_data_path',
-        default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'))
+        '-d', '--data_dir', dest='run_data_path', type="string",
+        metavar="PATH",
+        default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'),
+        help="directory to place run information and state")
+    parser.add_option(
+        '-e', '--epochs', dest='num_epochs', type="int", metavar="EPOCHS",
+        default=100,
+        help="number of epochs to train against")
+    parser.add_option(
+        '-i', '--interval', dest='save_state_interval', type="int",
+        metavar="EPOCHS",
+        default=10,
+        help="how often (in epochs) to save the internal state of the model")
+    parser.add_option(
+        '-n', '--num_rows', dest='num_rows', type="int", metavar="ROWS",
+        default=None,
+        help="how many rows from the dataset to load (leave blank for all)")
+    parser.add_option(
+        '-b', '--batchsize', dest='batchsize', type="int", metavar="ROWS",
+        default=128,
+        help="how many rows of inputs to process simultaneously")
 
     options, args = parser.parse_args()
 
