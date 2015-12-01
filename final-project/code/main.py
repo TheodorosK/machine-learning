@@ -18,7 +18,7 @@ import perceptron
 
 
 class Tee(object):
-    '''Tees file descriptors so that writes are made to all simultaneously.
+    '''Tees file descriptors so that writes are made everywhere simultaneously.
     '''
     def __init__(self, *files):
         self.files = files
@@ -48,7 +48,7 @@ def main():
     os.mkdir(run_data_path)
 
     # Tee the output to a logfile.
-    console_fd = open(os.path.join(run_data_path, 'console_log.txt'), 'w')
+    console_fd = open(os.path.join(run_data_path, 'console_log.txt'), 'a')
     sys.stdout = Tee(sys.stdout, console_fd)
 
     #
