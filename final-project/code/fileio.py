@@ -18,10 +18,14 @@ class DataReader:
     def __init__(self):
         self._x_values = None
         self._y_values = None
+        self._x_labels = None
+        self._y_labels = None
 
-    def _set_xy(self, x_values, y_values):
+    def _set_xy(self, x_values, y_values, x_labels, y_labels):
         self._x_values = x_values
         self._y_values = y_values
+        self._x_labels = x_labels
+        self._y_labels = y_labels
 
     @abc.abstractmethod
     def load_file(self):
@@ -38,6 +42,11 @@ class DataReader:
         '''
         return {'X': self._x_values, 'Y': self._y_values}
 
+    def get_labels(self):
+        '''Returns the labels for the values.
+        '''
+        return {'X': self._x_labels, 'Y': self._y_labels}
+
 
 class FaceReader(DataReader):
     '''Reads the facial keypoint training data and caches using pickler.
@@ -51,11 +60,14 @@ class FaceReader(DataReader):
     @staticmethod
     def __read_csv_file(filename, nrows):
         data = pd.read_csv(
-            filename, sep=r'\s|,', engine='python',
-            header=1, index_col=False, nrows=nrows).values
-        x_values = data[:, 30:]
-        y_values = data[:, 0:30]
-        return (x_values, y_values)
+            filename, sep=',', engine='c',
+            index_col=False, nrows=nrows)
+        x_values = np.array(map(lambda x: map(
+            int, x.split()), data.values[:, 30]))
+        y_values = np.asarray(data.values[:, 0:30], dtype='float64')
+        y_labels = list(data.columns.values)[0:30]
+
+        return (x_values, y_values, y_labels)
 
     @staticmethod
     def __reshape_data(x_values):
@@ -65,20 +77,22 @@ class FaceReader(DataReader):
     def load_file(self):
         if self.__fast_nrows is not None:
             print "Using Fast-Path, CSV Load"
-            x_values, y_values = FaceReader.__read_csv_file(
+            x_values, y_values, y_labels = FaceReader.__read_csv_file(
                 self.__filename, self.__fast_nrows)
-            self._set_xy(FaceReader.__reshape_data(x_values), y_values)
+            self._set_xy(FaceReader.__reshape_data(x_values), y_values,
+                         None, y_labels)
             return
 
         if not os.path.exists(self.__picklefile):
             print "Pickle Doesn't Exist, Loading CSV"
-            x_values, y_values = FaceReader.__read_csv_file(
+            x_values, y_values, y_labels = FaceReader.__read_csv_file(
                 self.__filename, self.__fast_nrows)
             print "Creating Pickle File"
             pickle_fd = gzip.open(self.__picklefile, 'wb')
             pickler = pickle.Pickler(pickle_fd)
             pickler.dump(x_values)
             pickler.dump(y_values)
+            pickler.dump(y_labels)
             pickle_fd.close()
             assert os.path.exists(self.__picklefile)
 
@@ -87,7 +101,9 @@ class FaceReader(DataReader):
         unpickler = pickle.Unpickler(pickle_fd)
         x_values = unpickler.load()
         y_values = unpickler.load()
+        y_labels = unpickler.load()
         pickle_fd.close()
 
-        self._set_xy(FaceReader.__reshape_data(x_values), y_values)
+        self._set_xy(FaceReader.__reshape_data(x_values), y_values,
+                     None, y_labels)
         return self.get_data()

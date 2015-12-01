@@ -2,20 +2,47 @@
 '''Main Program for Training over the Facial Keypoints dataset.
 '''
 import code
+import datetime
+import os
+import sys
 import time
 
 import lasagne
 import numpy as np
 
 import batch
+import data_logger
 import fileio
 import partition
 import perceptron
 
 
+class Tee(object):
+    def __init__(self, *files):
+        self.files = files
+
+    def write(self, obj):
+        for f in self.files:
+            f.write(obj)
+            f.flush()  # If you want the output to be visible immediately
+
+    def flush(self):
+        for f in self.files:
+            f.flush()
+
+
 def main():
     '''Trains the Model.
     '''
+    # Create a directory for our work.
+    run_data_path = datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S')
+    assert not os.path.exists(run_data_path)
+    os.mkdir(run_data_path)
+
+    # Tee the output to a logfile.
+    console_fd = open(os.path.join(run_data_path, 'console_log.txt'), 'w')
+    sys.stdout = Tee(sys.stdout, console_fd)
+
     #
     # Load the Dataset
     #
@@ -23,7 +50,7 @@ def main():
     faces = fileio.FaceReader(
         "../data/training.csv",
         "../data/training.pkl.gz",
-        fast_nrows=None)
+        fast_nrows=110)
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
@@ -54,7 +81,7 @@ def main():
     print "Partition Took {:.3f}s".format(time.time() - start_time)
 
     for k in partitions.keys():
-        print("%s X.shape=%s, Y.shape=%s" % (
+        print("%20s X.shape=%s, Y.shape=%s" % (
             k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
 
     # fixme(mdelio) should we pickle here for reproducibility/interruptibiity?
@@ -62,7 +89,7 @@ def main():
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
-    batchsize = 128
+    batchsize = 20
     start_time = time.time()
     mlp = perceptron.ConvolutionalMLP(
         (batchsize, 1, 96, 96),  # input shape
@@ -84,8 +111,11 @@ def main():
     #
     # Finally, launch the training loop.
     #
+    loss_log = data_logger.CSVEpochLogger(
+        run_data_path, "loss_%d.csv", "loss.csv", faces.get_labels()['Y'])
+
     print "Starting training..."
-    trainer = batch.BatchedTrainer(mlp, batchsize, partitions)
+    trainer = batch.BatchedTrainer(mlp, batchsize, partitions, loss_log)
     trainer.train(30)
 
     y_pred = trainer.predict_y(partitions['test']['X'])

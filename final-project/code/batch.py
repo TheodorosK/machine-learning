@@ -10,10 +10,11 @@ import numpy as np
 class BatchedTrainer(object):
     '''Performs Batch processing/training using a multi-layer perceptron.
     '''
-    def __init__(self, mlp, batchsize, dataset):
+    def __init__(self, mlp, batchsize, dataset, logger):
         self.__mlp = mlp
         self.__batchsize = batchsize
         self.__dataset = dataset
+        self.__logger = logger
 
     @staticmethod
     def __iterate(data, batchsize, shuffle=False):
@@ -46,7 +47,8 @@ class BatchedTrainer(object):
         valid_rmse = BatchedTrainer.__run_batches(
             self.__dataset['validate'], self.__batchsize,
             self.__mlp.validate, shuffle=False)
-        return (train_rmse, valid_rmse)
+
+        return (train_rmse, np.mean(valid_rmse, axis=0))
 
     def predict_y(self, x_values):
         '''Predict Y values using the current state of the model and X.
@@ -80,14 +82,16 @@ class BatchedTrainer(object):
 
         for epoch in range(num_epochs):
             start_time = time.time()
-            print("Epoch {} of {}".format(epoch + 1, num_epochs))
+            print "Epoch {} of {}".format(epoch + 1, num_epochs)
             train_rmse, valid_rmse = self.__train_one_epoch()
-            print("  took {:.3f}s".format(time.time() - start_time))
+            self.__logger.log(valid_rmse, epoch+1)
+
+            print "  took {:.3f}s".format(time.time() - start_time)
             print "  training loss:\t\t{:.6f}".format(train_rmse)
-            print "  validation loss:\t\t{:.6f}".format(valid_rmse)
+            print "  validation loss:\t\t{:.6f}".format(np.mean(valid_rmse))
 
         test_rmse = BatchedTrainer.__run_batches(
             self.__dataset['test'], self.__batchsize,
             self.__mlp.validate, shuffle=False)
         print "Final results:"
-        print "  test loss:\t\t\t{:.6f}".format(test_rmse)
+        print "  test loss:\t\t\t{:.6f}".format(np.mean(test_rmse))

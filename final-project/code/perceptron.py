@@ -162,7 +162,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             self.__network, deterministic=True)
         test_loss = lasagne.objectives.squared_error(
             test_prediction, self.__target_var)
-        test_loss = lasagne.objectives.aggregate(test_loss, mode='mean')
+
+        # test_loss = lasagne.objectives.aggregate(test_loss, mode='mean')
 
         # Create the training and validation functions that we'll use to train
         # the model and validate the results.
