@@ -96,8 +96,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         self.__hidden_layer_nonlinearity = hidden_layer_nonlinearity
         self.__output_width = output_width
 
-        self.__input_var = T.dtensor4('input')
-        self.__target_var = T.dmatrix('target')
+        self.__input_var = T.ftensor4('input')
+        self.__target_var = T.fmatrix('target')
 
         self.__network = None
         self._create_network()
