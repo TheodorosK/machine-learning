@@ -92,11 +92,16 @@ def real_main(options):
     # if we don't though, our loss function is invalid, which means our model
     # cannot train.
     raw_data = faces.get_data()
-    to_keep = ~(np.isnan(raw_data['Y']).any(1))
-    raw_data['X'] = raw_data['X'][to_keep]
-    raw_data['Y'] = raw_data['Y'][to_keep]
-    print "Dropping samples with NaNs: {:3.1f}% dropped".format(
-        float(sum(~to_keep))/float(len(to_keep))*100.)
+    if options.map_nans is not None:
+        to_replace = np.isnan(raw_data['Y'])
+        raw_data['Y'][to_replace] = options.map_nans
+        print "Replaced NaN with cardinal value of %d" % options.map_nans
+    else:
+        to_keep = ~(np.isnan(raw_data['Y']).any(1))
+        raw_data['X'] = raw_data['X'][to_keep]
+        raw_data['Y'] = raw_data['Y'][to_keep]
+        print "Dropping samples with NaNs: {:3.1f}% dropped".format(
+            float(sum(~to_keep))/float(len(to_keep))*100.)
 
     #
     # Partition the Dataset
@@ -162,7 +167,7 @@ def main():
     #
     parser = optparse.OptionParser()
     parser.add_option(
-        '-d', '--data_dir', dest='run_data_path', type="string",
+        '-o', '--output_dir', dest='run_data_path', type="string",
         metavar="PATH",
         default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'),
         help=("directory to place run information and state "
@@ -178,10 +183,6 @@ def main():
         help=("how often (in epochs) to save internal model state"
               "[default: %default]"))
     parser.add_option(
-        '-n', '--num_rows', dest='num_rows', type="int", metavar="ROWS",
-        default=None,
-        help="rows from the dataset to use [default: all]")
-    parser.add_option(
         '-b', '--batchsize', dest='batchsize', type="int", metavar="ROWS",
         default=None,
         help="override the batchsize specified in config_file")
@@ -189,6 +190,27 @@ def main():
         '-c', '--config_file', dest='config_file', type='string',
         metavar="FILE", default="configs/default.cfg",
         help="neural network configuration file [default: %default]")
+
+    data_group = optparse.OptionGroup(
+        parser, "Data Options", "Options for controlling the input data.")
+    data_group.add_option(
+        '--faces_csv', dest='faces_file', type='string',
+        metavar="PATH", default=os.path.abspath("../data/training.csv"),
+        help="path to the faces CSV file [default: %default]")
+    data_group.add_option(
+        '--faces_pickle', dest='faces_pickle', type='string',
+        metavar="PATH", default=os.path.abspath("../data/training.pkl.gz"),
+        help="path to the faces pickle file [default: %default]")
+    data_group.add_option(
+        '-n', '--num_rows', dest='num_rows', type="int", metavar="ROWS",
+        default=None,
+        help="rows from the dataset to use [default: all]")
+    data_group.add_option(
+        '--map_nans', dest='map_nans', type="int", metavar="VALUE",
+        default=None,
+        help=("maps nan values to specified value or drops them from the "
+              "dataset [default: drop]"))
+    parser.add_option_group(data_group)
 
     options, _ = parser.parse_args()
 
