@@ -81,10 +81,8 @@ def real_main(options):
     # Load the Dataset
     #
     start_time = time.time()
-    faces = fileio.FaceReader(
-        "../../data/training.csv",
-        "../../data/training.pkl.gz",
-        fast_nrows=options.num_rows)
+    faces = fileio.FaceReader(options.faces_csv, options.faces_pickled,
+                              fast_nrows=options.num_rows)
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
@@ -196,11 +194,11 @@ def main():
     data_group = optparse.OptionGroup(
         parser, "Data Options", "Options for controlling the input data.")
     data_group.add_option(
-        '--faces_csv', dest='faces_file', type='string',
+        '--faces_csv', dest='faces_csv', type='string',
         metavar="PATH", default=os.path.abspath("../data/training.csv"),
         help="path to the faces CSV file [default: %default]")
     data_group.add_option(
-        '--faces_pickle', dest='faces_pickle', type='string',
+        '--faces_pickle', dest='faces_pickled', type='string',
         metavar="PATH", default=os.path.abspath("../data/training.pkl.gz"),
         help="path to the faces pickle file [default: %default]")
     data_group.add_option(
@@ -209,12 +207,12 @@ def main():
         help="rows from the dataset to use [default: all]")
     data_group.add_option(
         '--drop_nans', dest='drop_nans', action="store_true",
-        help=("option to drop NaNs instead of mapping to cardinal "
+        help=("option to drop target NaNs instead of mapping to cardinal "
               "[default: map]"))
     data_group.add_option(
         '--nan_cardinal', dest='nan_cardinal', type='int', metavar="VALUE",
         default=-1,
-        help=("cardinal value to use when mapping NaNs [default: %default]"))
+        help=("cardinal value to use for target NaNs [default: %default]"))
     parser.add_option_group(data_group)
 
     options, _ = parser.parse_args()
