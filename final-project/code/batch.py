@@ -84,7 +84,8 @@ class BatchedTrainer(object):
             start_time = time.time()
             print "Epoch {} of {}".format(epoch + 1, num_epochs)
             train_rmse, valid_rmse = self.__train_one_epoch()
-            self.__logger.log(valid_rmse, epoch+1)
+            self.__logger.log(
+                np.concatenate(([train_rmse], valid_rmse)), epoch+1)
 
             print "  took {:.3f}s".format(time.time() - start_time)
             print "  training loss:\t\t{:.6f}".format(train_rmse)

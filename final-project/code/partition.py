@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 '''Functions and classes for partitioning the dataset.
 '''
+import cPickle as pickle
+import os
 
 import numpy as np
 
@@ -9,7 +11,7 @@ class Partitioner(object):
     '''Partitions a Dataset into classes based on the label-size dictionary
     '''
 
-    def __init__(self, dataset, labels_sizes, shuffle=True):
+    def __init__(self, dataset, labels_sizes, cache_file, shuffle=True, ):
         '''Creates a partitioner class.
 
         Args:
@@ -23,6 +25,7 @@ class Partitioner(object):
         self.__dataset = dataset
         assert sum(labels_sizes.values()) == 100
         self.__labels_sizes = labels_sizes
+        self.__cache_file = cache_file
         self.__shuffle = shuffle
 
         self.__labels_indices = None
@@ -49,15 +52,19 @@ class Partitioner(object):
 
         return partition
 
-    def save_indices(self, filename):
+    def __save_indices(self):
         '''Saves the partition indices to disk for later retrieval.
         '''
-        raise NotImplementedError
+        with open(self.__cache_file, 'wb') as file_descriptor:
+            pickler = pickle.Pickler(file_descriptor)
+            pickler.dump(self.__labels_indices)
 
-    def load_indices(self, filename):
+    def __load_indices(self):
         '''Loads the partition indices from disk to recreate state.
         '''
-        raise NotImplementedError
+        with open(self.__cache_file, 'r') as file_descriptor:
+            unpickler = pickle.Unpickler(file_descriptor)
+            self.__labels_indices = unpickler.load()
 
     def run(self):
         '''
@@ -70,9 +77,13 @@ class Partitioner(object):
              'validate': {'X': <dataset.Xs>, 'Y': <dataset.Ys>}}
 
         '''
-        if self.__labels_indices is None:
+        if os.path.exists(self.__cache_file):
+            print "using partition index cache file"
+            self.__load_indices()
+        else:
             self.__labels_indices = Partitioner.__generate_partition_indices(
                 len(self.__dataset['X']), self.__labels_sizes, self.__shuffle)
+            self.__save_indices()
 
         partitioned = {}
         for k in self.__labels_indices:

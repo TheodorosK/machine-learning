@@ -3,6 +3,7 @@
 '''
 import code
 import datetime
+import optparse
 import os
 import sys
 import time
@@ -39,16 +40,16 @@ class Tee(object):
             f.flush()
 
 
-def main():
+def main(options):
     '''Trains the Model.
     '''
-    # Create a directory for our work.
-    run_data_path = datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S')
-    assert not os.path.exists(run_data_path)
-    os.mkdir(run_data_path)
+    #
+    # Change to the run data directory
+    #
+    os.chdir(options.run_data_path)
 
     # Tee the output to a logfile.
-    console_fd = open(os.path.join(run_data_path, 'console_log.txt'), 'a')
+    console_fd = open('console_log.txt', 'a')
     sys.stdout = Tee(sys.stdout, console_fd)
 
     #
@@ -56,8 +57,8 @@ def main():
     #
     start_time = time.time()
     faces = fileio.FaceReader(
-        "../data/training.csv",
-        "../data/training.pkl.gz",
+        "../../data/training.csv",
+        "../../data/training.pkl.gz",
         fast_nrows=110)
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
@@ -77,9 +78,9 @@ def main():
 
     start_time = time.time()
     partitioner = partition.Partitioner(
-        raw_data, {'train': 60, 'validate': 20, 'test': 20})
+        raw_data, {'train': 60, 'validate': 20, 'test': 20},
+        "partition_indices.pkl")
     partitions = partitioner.run()
-
     print "Partition Took {:.3f}s".format(time.time() - start_time)
 
     for k in partitions.keys():
@@ -113,12 +114,12 @@ def main():
     #
     # Finally, launch the training loop.
     #
-    loss_log = data_logger.CSVEpochLogger(
-        run_data_path, "loss_%d.csv", "loss.csv", faces.get_labels()['Y'])
-
     print "Starting training..."
+    loss_log = data_logger.CSVEpochLogger(
+        "loss_%05d.csv", "loss.csv",
+        np.concatenate((['train_loss'], faces.get_labels()['Y'])))
     trainer = batch.BatchedTrainer(mlp, batchsize, partitions, loss_log)
-    trainer.train(30)
+    trainer.train(3)
 
     y_pred = trainer.predict_y(partitions['test']['X'])
     print y_pred[0]
@@ -126,5 +127,21 @@ def main():
 
     code.interact(local=locals())
 
+#
+# Parse Arguments and call main.
+#
 if __name__ == "__main__":
-    main()
+    parser = optparse.OptionParser()
+    parser.add_option(
+        "-d", "--data-dir", dest='run_data_path',
+        default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'))
+
+    options, args = parser.parse_args()
+
+    # Create a directory for our work.
+    if os.path.exists(options.run_data_path):
+        print "using existing data path=%s" % options.run_data_path
+    else:
+        os.mkdir(options.run_data_path)
+
+    main(options)

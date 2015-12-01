@@ -29,16 +29,15 @@ class CSVEpochLogger(EpochLogger):
     '''
     EPOCH_COLNAME = "epoch"
 
-    def __init__(self, run_dir, file_fmt_str, link_file, column_names):
+    def __init__(self, file_fmt_str, link_file, column_names):
         super(CSVEpochLogger, self).__init__()
-        self.__run_dir = run_dir
         self.__file_fmt = file_fmt_str
-        self.__link_file = os.path.join(run_dir, link_file)
+        self.__link_file = os.path.join(link_file)
         self.__column_names = np.concatenate(
             ([self.EPOCH_COLNAME], column_names))
 
     def _get_filename(self, epoch):
-        return os.path.join(self.__run_dir, ((self.__file_fmt % epoch)))
+        return (self.__file_fmt % epoch)
 
     def log(self, data, epoch):
         data_frame = pd.DataFrame([np.concatenate(([epoch], data))],
@@ -59,4 +58,4 @@ class CSVEpochLogger(EpochLogger):
         if (os.path.exists(self.__link_file) and
                 os.path.islink(self.__link_file)):
             os.unlink(self.__link_file)
-        os.symlink(os.path.basename(filename), self.__link_file)
+        os.symlink(filename, self.__link_file)
