@@ -63,7 +63,9 @@ def main(options):
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
-    # fixme(mdelio) if we drop the nas, we drop a lot of data (2/3 of it).
+    # fixme(mdelio) if we drop the NaNs, we drop a lot of data (2/3 of it).
+    # if we don't though, our loss function is invalid, which means our model
+    # cannot train.
     raw_data = faces.get_data()
     to_keep = ~(np.isnan(raw_data['Y']).any(1))
     raw_data['X'] = raw_data['X'][to_keep]
