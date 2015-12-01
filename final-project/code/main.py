@@ -140,8 +140,9 @@ if __name__ == "__main__":
 
     # Create a directory for our work.
     if os.path.exists(options.run_data_path):
-        print "using existing data path=%s" % options.run_data_path
+        print "Using existing data directory at %s" % options.run_data_path
     else:
+        print "Creating data directory at %s" % options.run_data_path
         os.mkdir(options.run_data_path)
 
     main(options)

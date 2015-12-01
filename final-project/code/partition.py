@@ -78,7 +78,7 @@ class Partitioner(object):
 
         '''
         if os.path.exists(self.__cache_file):
-            print "using partition index cache file"
+            print "Using partitioning index cache file %s" % self.__cache_file
             self.__load_indices()
         else:
             self.__labels_indices = Partitioner.__generate_partition_indices(
