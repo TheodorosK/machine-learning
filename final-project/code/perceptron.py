@@ -64,6 +64,10 @@ class MultiLevelPerceptron:
 class ConvolutionalMLP(MultiLevelPerceptron):
     '''Convolutional MLP Definition.
     '''
+    __LINEARITY_TYPES = {
+        'rectify': lasagne.nonlinearities.rectify,
+        'tanh': lasagne.nonlinearities.tanh
+    }
 
     # This isn't great, but it's a one-off
     def __init__(self, config, input_shape, output_width):
@@ -88,10 +92,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             raise AssertionError('Cannot call BuildNetwork more than once')
 
         # pylint: disable=redefined-variable-type
-        nonlinearity = {
-            'rectify': lasagne.nonlinearities.rectify,
-            'tanh': lasagne.nonlinearities.tanh
-        }[self.__config['nonlinearity']]
+        nonlinearity = self.__LINEARITY_TYPES[self.__config['nonlinearity']]
 
         # Input Layer
         lyr = lasagne.layers.InputLayer(self.__input_shape, self.__input_var,
@@ -135,10 +136,16 @@ class ConvolutionalMLP(MultiLevelPerceptron):
                         p=hidden['dropout'],
                         name=('dropout_%d' % i))
 
+        if 'output_nonlinearity' in self.__config:
+            output_nonlinearity = self.__LINEARITY_TYPES[
+                self.__config['output_nonlinearity']]
+        else:
+            output_nonlinearity = None
+
         # Output Layer
         self.__network = lasagne.layers.DenseLayer(
             lyr, num_units=self.__output_width,
-            nonlinearity=nonlinearity,
+            nonlinearity=output_nonlinearity,
             name='output')
 
     def build_network(self):
