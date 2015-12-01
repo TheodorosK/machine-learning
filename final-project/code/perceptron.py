@@ -2,6 +2,7 @@
 '''This module defines a multi-level perceptron and convolutional MLP.
 '''
 import abc
+import json
 
 import lasagne
 import theano
@@ -64,36 +65,14 @@ class ConvolutionalMLP(MultiLevelPerceptron):
     '''Convolutional MLP Definition.
     '''
 
-    # pylint: disable=too-many-instance-attributes,too-many-arguments
     # This isn't great, but it's a one-off
-    def __init__(self, input_shape, input_drop_rate,
-                 conv_filter_sizes, conv_filter_count, conv_pooling_size,
-                 hidden_layer_widths, hidden_drop_rate,
-                 hidden_layer_nonlinearity, output_width,
-                 learning_rate, momentum):
+    def __init__(self, config, input_shape, output_width):
         '''Creates a Convolutional Multi-level MultiLevel
 
         '''
         super(ConvolutionalMLP, self).__init__()
-        self.__input_shape = input_shape
-        self.__input_drop_rate = input_drop_rate
-
-        if ((len(conv_filter_sizes) != len(conv_filter_count)) or
-                (len(conv_filter_sizes) != len(conv_pooling_size))):
-            raise ValueError(
-                'conv_filter_sizes, conv_filter_count, and conv_pooling_size, '
-                'must be all be the same length')
-        self.__conv_filter_sizes = conv_filter_sizes
-        self.__conv_filter_count = conv_filter_count
-        self.__conv_pooling_size = conv_pooling_size
-
-        if len(hidden_drop_rate) != len(hidden_layer_widths):
-            raise ValueError('hidden_drop_rate must be same length as '
-                             'hidden_layer_width')
-
-        self.__hidden_layer_widths = hidden_layer_widths
-        self.__hidden_drop_rate = hidden_drop_rate
-        self.__hidden_layer_nonlinearity = hidden_layer_nonlinearity
+        self.__config = config
+        self.__input_shape = (config['batchsize'],) + input_shape
         self.__output_width = output_width
 
         self.__input_var = T.ftensor4('input')
@@ -103,55 +82,63 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         self._create_network()
         self.__train_fn = None
         self.__validate_fn = None
-        self.__learning_rate = learning_rate
-        self.__momentum = momentum
 
     def _create_network(self):
         if self.__network is not None:
             raise AssertionError('Cannot call BuildNetwork more than once')
 
         # pylint: disable=redefined-variable-type
+        nonlinearity = {
+            'rectify': lasagne.nonlinearities.rectify,
+            'tanh': lasagne.nonlinearities.tanh
+        }[self.__config['nonlinearity']]
 
         # Input Layer
         lyr = lasagne.layers.InputLayer(self.__input_shape, self.__input_var,
                                         name='input')
-        if self.__input_drop_rate != 0:
+        if 'input_drop_rate' in self.__config:
             lyr = lasagne.layers.DropoutLayer(
-                lyr, p=self.__input_drop_rate,
+                lyr,
+                p=self.__config['input_drop_rate'],
                 name='input_dropout')
 
         # 2d Convolutional Layers
-        for i in range(len(self.__conv_filter_sizes)):
-            lyr = lasagne.layers.Conv2DLayer(
-                lyr,
-                num_filters=self.__conv_filter_count[i],
-                filter_size=self.__conv_filter_sizes[i],
-                nonlinearity=self.__hidden_layer_nonlinearity,
-                name=('conv_2d_%d' % i))
-            lyr = lasagne.layers.MaxPool2DLayer(
-                lyr,
-                pool_size=self.__conv_pooling_size[i],
-                name=('pool_2d_%d' % i))
+        if 'conv' in self.__config:
+            i = 0
+            for conv in self.__config['conv']:
+                lyr = lasagne.layers.Conv2DLayer(
+                    lyr,
+                    num_filters=conv['filter_count'],
+                    filter_size=tuple(conv['filter_size']),
+                    nonlinearity=nonlinearity,
+                    name=('conv_2d_%d' % i))
+                lyr = lasagne.layers.MaxPool2DLayer(
+                    lyr,
+                    pool_size=tuple(conv['pooling_size']),
+                    name=('pool_2d_%d' % i))
+                i += 1
 
         # Hidden Layers
-        for i in range(len(self.__hidden_layer_widths)):
-            lyr = lasagne.layers.DenseLayer(
-                lyr,
-                num_units=self.__hidden_layer_widths[i],
-                nonlinearity=self.__hidden_layer_nonlinearity,
-                W=lasagne.init.GlorotUniform(),
-                name=('dense_%d' % i))
-
-            if self.__hidden_drop_rate[i] != 0:
-                lyr = lasagne.layers.DropoutLayer(
+        if 'hidden' in self.__config:
+            i = 0
+            for hidden in self.__config['hidden']:
+                lyr = lasagne.layers.DenseLayer(
                     lyr,
-                    p=self.__hidden_drop_rate[i],
-                    name=('dropout_%d' % i))
+                    num_units=hidden['width'],
+                    nonlinearity=nonlinearity,
+                    W=lasagne.init.GlorotUniform(),
+                    name=('dense_%d' % i))
+
+                if 'dropout' in hidden and hidden['dropout'] != 0:
+                    lyr = lasagne.layers.DropoutLayer(
+                        lyr,
+                        p=hidden['dropout'],
+                        name=('dropout_%d' % i))
 
         # Output Layer
         self.__network = lasagne.layers.DenseLayer(
             lyr, num_units=self.__output_width,
-            nonlinearity=self.__hidden_layer_nonlinearity,
+            nonlinearity=nonlinearity,
             name='output')
 
     def build_network(self):
@@ -164,8 +151,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         # Grab the parameters and define the update scheme.
         params = lasagne.layers.get_all_params(self.__network, trainable=True)
         updates = lasagne.updates.nesterov_momentum(
-            loss, params, learning_rate=self.__learning_rate,
-            momentum=self.__momentum)
+            loss, params, learning_rate=self.__config['learning_rate'],
+            momentum=self.__config['momentum'])
 
         # For testing the output, use the deterministic parts of the output
         # (this turns off noise-sources, if we had any and possibly does things
@@ -201,15 +188,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         lasagne.layers.set_all_param_values(self.__network, state)
 
     def __str__(self):
-        ret_string = (
-            "Convoluational MLP:\n"
-            "  Parameters:\n"
-            "\tinput_dropout_rate=%s\n"
-            "\tconv_filter_size=%s\n"
-            "\tconv_pooling_size=%s\n"
-            "\thidden_dropout=%s\n" % (
-                self.__input_drop_rate, self.__conv_filter_sizes,
-                self.__conv_pooling_size, self.__hidden_drop_rate))
+        ret_string = "Convoluational MLP:\n%s\n" % (
+            json.dumps(self.__config, sort_keys=True))
 
         lyrs = lasagne.layers.get_all_layers(self.__network)
         ret_string += "  Layer Shapes:\n"

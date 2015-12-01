@@ -3,12 +3,12 @@
 '''
 import code
 import datetime
+import json
 import optparse
 import os
 import sys
 import time
 
-import lasagne
 import numpy as np
 
 import batch
@@ -40,9 +40,31 @@ class Tee(object):
             f.flush()
 
 
-def main(options):
-    '''Trains the Model.
+def load_nnet_config(filename, options):
+    '''Load the neural network config file and address overrides
     '''
+    print "Loading NNET configuration from %s" % filename
+    assert os.path.exists(filename)
+    with open(filename) as json_fp:
+        nnet_config = json.load(json_fp)
+
+    # Handle command-line overrides that affect the config
+    if options.batchsize is not None:
+        nnet_config['batchsize'] = options.batchsize
+
+    return nnet_config
+
+
+def real_main(options):
+    '''This loads the data, manipulates it and trains the model, it's the glue
+    that does all of the work.
+    '''
+    # pylint: disable=too-many-locals
+    # Yes we have a lot of variables, but this is the main function.
+
+    # Make the config file path absolute (so that a chdir won't affect it)
+    config_file_path = os.path.abspath(options.config_file)
+
     #
     # Change to the run data directory
     #
@@ -51,6 +73,9 @@ def main(options):
     # Tee the output to a logfile.
     console_fd = open('console_log.txt', 'a')
     sys.stdout = Tee(sys.stdout, console_fd)
+
+    # Load the nnet_config
+    nnet_config = load_nnet_config(config_file_path, options)
 
     #
     # Load the Dataset
@@ -96,21 +121,9 @@ def main(options):
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
-    batchsize = options.batchsize
+    # batchsize = options.batchsize
     start_time = time.time()
-    mlp = perceptron.ConvolutionalMLP(
-        (batchsize, 1, 96, 96),  # input shape
-        0.2,                     # input drop-rate
-        [(6, 6), (2, 2)],        # 2D filter sizes for each layer
-        [7, 10],                 # 2D filter count at each layer
-        [(3, 3), (2, 2)],        # Pooling size at each layer
-        [69*69, 69*69],          # hidden_layer_widths
-        [0.5, 0.5],              # hidden_drop_rate
-        lasagne.nonlinearities.rectify,  # hidden_layer_nonlinearity
-        30,                      # output width
-        1e-4,                    # learning rate
-        0.8                      # momentum
-        )
+    mlp = perceptron.ConvolutionalMLP(nnet_config, (1, 96, 96), 30)
     print mlp
     mlp.build_network()
     print "Building Network Took {:.3f}s".format(time.time() - start_time)
@@ -125,7 +138,7 @@ def main(options):
     resumer = batch.TrainingResumer(
         mlp, "epochs_done.txt", "state_%05d.pkl.gz",
         options.save_state_interval)
-    trainer = batch.BatchedTrainer(mlp, batchsize, partitions,
+    trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'], partitions,
                                    loss_log, resumer)
     trainer.train(options.num_epochs)
 
@@ -140,10 +153,10 @@ def main(options):
     # Drop into a console so that we do anything additional we need.
     code.interact(local=locals())
 
-#
-# Parse Arguments and call main.
-#
-if __name__ == "__main__":
+
+def main():
+    '''Parse Arguments and call real_main
+    '''
     #
     # Create list of options and parse them.
     #
@@ -168,10 +181,14 @@ if __name__ == "__main__":
         help="how many rows from the dataset to load (leave blank for all)")
     parser.add_option(
         '-b', '--batchsize', dest='batchsize', type="int", metavar="ROWS",
-        default=128,
-        help="how many rows of inputs to process simultaneously")
+        default=None,
+        help="override the batchsize specified in config_file")
+    parser.add_option(
+        '-c', '--config_file', dest='config_file', type='string',
+        metavar="FILE", default="configs/default.cfg",
+        help="neural network configuration file")
 
-    options, args = parser.parse_args()
+    options, _ = parser.parse_args()
 
     # Create a directory for our work.
     if os.path.exists(options.run_data_path):
@@ -180,4 +197,8 @@ if __name__ == "__main__":
         print "Creating data directory at %s" % options.run_data_path
         os.mkdir(options.run_data_path)
 
-    main(options)
+    real_main(options)
+
+
+if __name__ == "__main__":
+    main()
