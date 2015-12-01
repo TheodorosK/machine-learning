@@ -62,12 +62,6 @@ def main():
     print "Dropping samples with NaNs: {:3.1f}% dropped".format(
         float(sum(~to_keep))/float(len(to_keep))*100.)
 
-    # class FakeData(object):
-    #   def __init__(self):
-    #       self.X = np.arange(110)+1
-    #       self.Y = np.arange(110)+101
-    # fr = FakeData()
-
     #
     # Partition the Dataset
     #
