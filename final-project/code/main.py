@@ -165,20 +165,22 @@ def main():
         '-d', '--data_dir', dest='run_data_path', type="string",
         metavar="PATH",
         default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'),
-        help="directory to place run information and state")
+        help=("directory to place run information and state "
+              "[default: run_<TIMESTAMP>]"))
     parser.add_option(
         '-e', '--epochs', dest='num_epochs', type="int", metavar="EPOCHS",
         default=100,
-        help="number of epochs to train against")
+        help="number of epochs to train against [default: %default]")
     parser.add_option(
         '-i', '--interval', dest='save_state_interval', type="int",
         metavar="EPOCHS",
         default=10,
-        help="how often (in epochs) to save the internal state of the model")
+        help=("how often (in epochs) to save internal model state"
+              "[default: %default]"))
     parser.add_option(
         '-n', '--num_rows', dest='num_rows', type="int", metavar="ROWS",
         default=None,
-        help="how many rows from the dataset to load (leave blank for all)")
+        help="rows from the dataset to use [default: all]")
     parser.add_option(
         '-b', '--batchsize', dest='batchsize', type="int", metavar="ROWS",
         default=None,
@@ -186,7 +188,7 @@ def main():
     parser.add_option(
         '-c', '--config_file', dest='config_file', type='string',
         metavar="FILE", default="configs/default.cfg",
-        help="neural network configuration file")
+        help="neural network configuration file [default: %default]")
 
     options, _ = parser.parse_args()
 
