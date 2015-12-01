@@ -45,10 +45,14 @@ class MultiLevelPerceptron:
 
     @abc.abstractmethod
     def get_state(self):
+        '''Get the state of the model and return it.
+        '''
         pass
 
     @abc.abstractmethod
     def set_state(self, state):
+        '''Set the state of the model from the argument.
+        '''
         pass
 
     @abc.abstractmethod

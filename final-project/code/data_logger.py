@@ -37,7 +37,7 @@ class CSVEpochLogger(EpochLogger):
             ([self.EPOCH_COLNAME], column_names))
 
     def _get_filename(self, epoch):
-        return (self.__file_fmt % epoch)
+        return self.__file_fmt % epoch
 
     def log(self, data, epoch):
         data_frame = pd.DataFrame([np.concatenate(([epoch], data))],

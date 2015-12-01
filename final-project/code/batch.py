@@ -31,7 +31,9 @@ class TrainingResumer(object):
             print "No training resume file found, starting from scratch"
             return 1
 
+        #
         # Determine which epoch we can resume from
+        #
         epoch_num = None
         with open(self.__status_file, "r") as status_fd:
             epoch_num = [int(x) for x in status_fd.readline().split()][0]
@@ -41,7 +43,9 @@ class TrainingResumer(object):
         state_file = (self.__state_file_fmt % epoch_num)
         assert os.path.exists(state_file)
 
+        #
         # Read the state
+        #
         state = None
         with gzip.open(state_file, "rb") as state_fd:
             unpickler = pickle.Unpickler(state_fd)
@@ -61,13 +65,17 @@ class TrainingResumer(object):
         start_time = time.time()
         state_file = (self.__state_file_fmt % epoch_num)
 
+        #
         # Write the state out first
+        #
         state = self.__mlp.get_state()
         with gzip.open(state_file, "wb") as state_fd:
             pickler = pickle.Pickler(state_fd, protocol=2)
             pickler.dump(state)
 
-        # Then Update the status file
+        #
+        # Update the status file to mark which epoch was written
+        #
         with open(self.__status_file, "w") as status_fd:
             status_fd.write('%d' % epoch_num)
 
