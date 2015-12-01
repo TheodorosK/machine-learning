@@ -89,7 +89,7 @@ class FaceReader(DataReader):
                 self.__filename, self.__fast_nrows)
             print "Creating Pickle File"
             pickle_fd = gzip.open(self.__picklefile, 'wb')
-            pickler = pickle.Pickler(pickle_fd)
+            pickler = pickle.Pickler(pickle_fd, protocol=2)
             pickler.dump(x_values)
             pickler.dump(y_values)
             pickler.dump(y_labels)

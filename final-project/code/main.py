@@ -118,7 +118,10 @@ def main(options):
     loss_log = data_logger.CSVEpochLogger(
         "loss_%05d.csv", "loss.csv",
         np.concatenate((['train_loss'], faces.get_labels()['Y'])))
-    trainer = batch.BatchedTrainer(mlp, batchsize, partitions, loss_log)
+    resumer = batch.TrainingResumer(mlp, "epochs_done.txt",
+                                    "state_%05d.pkl.gz", 2)
+    trainer = batch.BatchedTrainer(mlp, batchsize, partitions,
+                                   loss_log, resumer)
     trainer.train(3)
 
     y_pred = trainer.predict_y(partitions['test']['X'])

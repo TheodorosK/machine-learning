@@ -1,20 +1,88 @@
 #!/usr/bin/env python
 '''Batch Processing Classes.
 '''
+import cPickle as pickle
+import gzip
+import os
 import sys
 import time
 
 import numpy as np
 
 
+class TrainingResumer(object):
+    '''Helper class to resume training
+    '''
+
+    def __init__(self, mlp, status_file, state_file_fmt, interval):
+        self.__mlp = mlp
+        self.__status_file = status_file
+        self.__state_file_fmt = state_file_fmt
+        self.__interval = interval
+
+    def resume_training(self):
+        '''Resumes the training from the last valid epoch if available or
+        begins a new training setup.
+
+        Resturns:
+            the starting epoch number (1-indexed).
+        '''
+        if not os.path.exists(self.__status_file):
+            print "No training resume file found, starting from scratch"
+            return 1
+
+        # Determine which epoch we can resume from
+        epoch_num = None
+        with open(self.__status_file, "r") as status_fd:
+            epoch_num = [int(x) for x in status_fd.readline().split()][0]
+        print "Resuming from epoch %d" % epoch_num
+
+        start_time = time.time()
+        state_file = (self.__state_file_fmt % epoch_num)
+        assert os.path.exists(state_file)
+
+        # Read the state
+        state = None
+        with gzip.open(state_file, "rb") as state_fd:
+            unpickler = pickle.Unpickler(state_fd)
+            state = unpickler.load()
+        self.__mlp.set_state(state)
+
+        print "  took {:.3f}s".format(time.time() - start_time)
+        return epoch_num + 1
+
+    def end_epoch(self, epoch_num):
+        '''Call this when the epoch training has finished
+        '''
+        if (epoch_num % self.__interval) != 0:
+            return
+
+        print "Saving resume file for epoch %d" % epoch_num
+        start_time = time.time()
+        state_file = (self.__state_file_fmt % epoch_num)
+
+        # Write the state out first
+        state = self.__mlp.get_state()
+        with gzip.open(state_file, "wb") as state_fd:
+            pickler = pickle.Pickler(state_fd, protocol=2)
+            pickler.dump(state)
+
+        # Then Update the status file
+        with open(self.__status_file, "w") as status_fd:
+            status_fd.write('%d' % epoch_num)
+
+        print "  took {:.3f}s".format(time.time() - start_time)
+
+
 class BatchedTrainer(object):
     '''Performs Batch processing/training using a multi-layer perceptron.
     '''
-    def __init__(self, mlp, batchsize, dataset, logger):
+    def __init__(self, mlp, batchsize, dataset, logger, resumer):
         self.__mlp = mlp
         self.__batchsize = batchsize
         self.__dataset = dataset
         self.__logger = logger
+        self.__resumer = resumer
 
     @staticmethod
     def __iterate(data, batchsize, shuffle=False):
@@ -79,17 +147,17 @@ class BatchedTrainer(object):
     def train(self, num_epochs):
         '''Train the model over the specified epochs.
         '''
-
-        for epoch in range(num_epochs):
+        for epoch in range(self.__resumer.resume_training(), num_epochs+1):
             start_time = time.time()
-            print "Epoch {} of {}".format(epoch + 1, num_epochs)
+            print "Epoch {} of {}".format(epoch, num_epochs)
             train_rmse, valid_rmse = self.__train_one_epoch()
             self.__logger.log(
-                np.concatenate(([train_rmse], valid_rmse)), epoch+1)
-
+                np.concatenate(([train_rmse], valid_rmse)), epoch)
             print "  took {:.3f}s".format(time.time() - start_time)
             print "  training loss:\t\t{:.6f}".format(train_rmse)
             print "  validation loss:\t\t{:.6f}".format(np.mean(valid_rmse))
+
+            self.__resumer.end_epoch(epoch)
 
         test_rmse = BatchedTrainer.__run_batches(
             self.__dataset['test'], self.__batchsize,

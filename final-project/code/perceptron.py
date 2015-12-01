@@ -44,6 +44,14 @@ class MultiLevelPerceptron:
         pass
 
     @abc.abstractmethod
+    def get_state(self):
+        pass
+
+    @abc.abstractmethod
+    def set_state(self, state):
+        pass
+
+    @abc.abstractmethod
     def __str__(self):
         pass
 
@@ -181,6 +189,12 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 
     def validate(self, x_values, y_values):
         return self.__validate_fn(x_values, y_values)
+
+    def get_state(self):
+        return lasagne.layers.get_all_param_values(self.__network)
+
+    def set_state(self, state):
+        lasagne.layers.set_all_param_values(self.__network, state)
 
     def __str__(self):
         ret_string = (
