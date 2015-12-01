@@ -90,6 +90,10 @@ def main(options):
             k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
 
     #
+    # Run any transformations on the training dataset here.
+    #
+
+    #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
     batchsize = options.batchsize
@@ -125,10 +129,15 @@ def main(options):
                                    loss_log, resumer)
     trainer.train(options.num_epochs)
 
+    #
+    # Run the final predict_y to see the output against the actual one.
+    # This is more of a sanity check for us.
+    #
     y_pred = trainer.predict_y(partitions['test']['X'])
     print y_pred[0]
     print partitions['test']['Y'][0]
 
+    # Drop into a console so that we do anything additional we need.
     code.interact(local=locals())
 
 #
