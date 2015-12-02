@@ -81,6 +81,7 @@ def real_main(options):
     # Tee the output to a logfile.
     console_fd = open('console_log.txt', 'a')
     sys.stdout = Tee(sys.stdout, console_fd)
+    sys.stderr = Tee(sys.stderr, console_fd)
     print "Tee done; subsequent prints appear on terminal and console_log.txt"
 
     #
