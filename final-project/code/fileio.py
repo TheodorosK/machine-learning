@@ -64,14 +64,14 @@ class FaceReader(DataReader):
             index_col=False, nrows=nrows)
         x_values = np.array(map(lambda x: map(
             int, x.split()), data.values[:, 30]))
-        y_values = np.asarray(data.values[:, 0:30], dtype='float32')
+        y_values = np.asarray(data.values[:, 0:30], dtype='float64')
         y_labels = list(data.columns.values)[0:30]
 
         return (x_values, y_values, y_labels)
 
     @staticmethod
     def __reshape_data(x_values):
-        return((np.asarray(x_values, dtype='float32') / 255.).reshape(
+        return((np.asarray(x_values, dtype='float64') / 255.).reshape(
             len(x_values), 1, 96, 96))
 
     def load_file(self):

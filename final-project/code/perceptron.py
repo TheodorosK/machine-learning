@@ -79,8 +79,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         self.__input_shape = (config['batchsize'],) + input_shape
         self.__output_width = output_width
 
-        self.__input_var = T.ftensor4('input')
-        self.__target_var = T.fmatrix('target')
+        self.__input_var = T.tensor4('input')
+        self.__target_var = T.matrix('target')
 
         self.__network = None
         self._create_network()

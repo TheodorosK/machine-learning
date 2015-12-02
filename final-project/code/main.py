@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 
+import lasagne
 import numpy as np
 
 import batch
@@ -103,9 +104,15 @@ def real_main(options):
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
     #
-    # Map/Drop NaNs
+    # Convert raw data from float64 to floatX (32/64-bit depending on GPU/CPU)
     #
     raw_data = faces.get_data()
+    raw_data['X'] = lasagne.utils.floatX(raw_data['X'])
+    raw_data['Y'] = lasagne.utils.floatX(raw_data['Y'])
+
+    #
+    # Map/Drop NaNs
+    #
     if options.drop_nans:
         to_keep = ~(np.isnan(raw_data['Y']).any(1))
         raw_data['X'] = raw_data['X'][to_keep]
