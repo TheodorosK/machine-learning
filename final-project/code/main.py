@@ -6,6 +6,7 @@ import datetime
 import json
 import optparse
 import os
+import random
 import subprocess
 import sys
 import time
@@ -17,7 +18,7 @@ import data_logger
 import fileio
 import partition
 import perceptron
-
+import preprocess
 
 class Tee(object):
     '''Tees file descriptors so that writes are made everywhere simultaneously.
@@ -137,6 +138,19 @@ def real_main(options):
     # Run any transformations on the training dataset here.
     #
 
+    for i in range(partitions['train']['X'].shape[0]):
+        partitions['train']['X'][i][0] = preprocess.enhance_contrast(partitions['train']['X'][i][0])
+
+        draw = random.uniform(0,1)
+        if draw < 0.125:
+            partitions['train']['X'][i][0], foo = preprocess.rotate(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], True)
+        elif 0.125 <= draw < 0.25:
+            partitions['train']['X'][i][0], foo = preprocess.rotate(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], False)
+        elif 0.25 <= draw < 0.375:
+            partitions['train']['X'][i][0], foo = preprocess.flip(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], True)
+        elif 0.375 <= draw < 0.5:
+            partitions['train']['X'][i][0], foo = preprocess.flip(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], True)
+
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
@@ -170,7 +184,7 @@ def real_main(options):
     print partitions['test']['Y'][0]
 
     # Drop into a console so that we do anything additional we need.
-    code.interact(local=locals())
+    # code.interact(local=locals())
 
 
 def main():
