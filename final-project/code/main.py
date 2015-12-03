@@ -155,11 +155,11 @@ def real_main(options):
 
     # Rotate/Flip first to avoid having to rotate and flip both the contrast
     # and the regular image.
-    rotate_flip = preprocess.RotateFlip()
+    rotate_flip = preprocess.RotateFlip('replace')
     rotate_flip.process_in_place(partitions['train'])
 
     # Contrast Enhancements
-    contrast = preprocess.ContrastEnhancer()
+    contrast = preprocess.ContrastEnhancer('sobel')
     contrast.process_partitions_in_place(partitions)
 
     print_partition_sizes(partitions)

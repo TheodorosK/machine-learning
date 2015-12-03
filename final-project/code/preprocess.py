@@ -5,7 +5,8 @@ import abc
 import random
 
 import numpy as np
-from skimage import exposure
+from skimage import exposure, feature
+import skimage.filters
 
 
 class ImagePreprocessor(object):
@@ -34,18 +35,21 @@ class ImagePreprocessor(object):
         return np.concatenate((old_images, new_images), axis=1), old_coords
 
     @abc.abstractmethod
-    def _process_one_image(self, image, coords):
+    def _process_one_image(self, image, coords, channel_list):
         pass
 
-    def process(self, all_images, all_coords):
+    def process(self, all_images, all_coords, channel_list=None):
         assert len(all_images) == len(all_coords)
+
+        if channel_list is None:
+            channel_list = range(all_images.shape[1])
 
         new_images = np.empty(all_images.shape)
         new_coords = np.empty(all_coords.shape)
         idx = 0
         for i in range(len(all_images)):
             new_image, new_coord = self._process_one_image(
-                all_images[i], all_coords[i])
+                all_images[i], all_coords[i], channel_list)
 
             # Skip updating new_images/new_coords if the processor returned
             # None for either.
@@ -59,22 +63,24 @@ class ImagePreprocessor(object):
         return self.__merge_fn(
             all_images, all_coords, new_images[0:idx], new_coords[0:idx])
 
-    def process_in_place(self, data):
-        data['X'], data['Y'] = self.process(data['X'], data['Y'])
+    def process_in_place(self, data, channel_list=None):
+        data['X'], data['Y'] = self.process(data['X'], data['Y'], channel_list)
 
-    def process_partitions_in_place(self, partitions, partition_names=None):
+    def process_partitions_in_place(
+            self, partitions, partition_names=None, channel_list=None):
         if partition_names is None:
             partition_names = partitions.keys()
 
         for partition_name in partition_names:
-            self.process_in_place(partitions[partition_name])
+            self.process_in_place(partitions[partition_name], channel_list)
 
 
 class RotateFlip(ImagePreprocessor):
     '''Rotates and flips images randomly
     '''
-    def __init__(self):
-        super(RotateFlip, self).__init__("append")
+    def __init__(self, placement):
+        assert placement in ["append", "replace"]
+        super(RotateFlip, self).__init__(placement)
 
     @staticmethod
     def __split(coords):
@@ -87,7 +93,7 @@ class RotateFlip(ImagePreprocessor):
         return [j for i in zip(x_coords, y_coords) for j in i]
 
     @staticmethod
-    def __flip(image, coords, axis):
+    def __flip(image, coords, axis, channel_list):
         flip_horizontal = {
             "h": True,
             "v": False
@@ -95,15 +101,15 @@ class RotateFlip(ImagePreprocessor):
 
         x_coords, y_coords = RotateFlip.__split(coords)
 
-        new_image = np.empty(image.shape)
+        new_image = image
         if flip_horizontal:
-            for i in range(len(image)):
+            for i in channel_list:
                 new_image[i] = np.fliplr(image[i])
             new_image = np.fliplr(image)
             x_coords = image.shape[0] - x_coords
             # y_coords unaffacted
         else:
-            for i in range(len(image)):
+            for i in channel_list:
                 new_image[i] = np.flipud(image[i])
             # x_coords unaffected
             y_coords = image.shape[1] - y_coords
@@ -111,7 +117,7 @@ class RotateFlip(ImagePreprocessor):
         return new_image, RotateFlip.__merge(x_coords, y_coords)
 
     @staticmethod
-    def __rotate90(image, coords, direction):
+    def __rotate90(image, coords, direction, channel_list):
         rotate_clockwise = {
             "cw": True,
             "ccw": False
@@ -119,15 +125,15 @@ class RotateFlip(ImagePreprocessor):
 
         x_coords, y_coords = RotateFlip.__split(coords)
 
-        new_image = np.empty(image.shape)
+        new_image = image
         if rotate_clockwise:
-            for i in range(len(image)):
+            for i in channel_list:
                 new_image[i] = np.rot90(image[i], 3)
             tmp_x_coords = x_coords
             x_coords = image.shape[0] - y_coords
             y_coords = tmp_x_coords
         else:
-            for i in range(len(image)):
+            for i in channel_list:
                 new_image[i] = np.rot90(image[i], 1)
             tmp_y_coords = y_coords
             y_coords = image.shape[1] - x_coords
@@ -135,16 +141,20 @@ class RotateFlip(ImagePreprocessor):
 
         return new_image, RotateFlip.__merge(x_coords, y_coords)
 
-    def _process_one_image(self, image, coords):
+    def _process_one_image(self, image, coords, channel_list):
         draw = random.uniform(0, 1)
         if draw < 1./8.:
-            new_image, new_coord = RotateFlip.__rotate90(image, coords, "cw")
+            new_image, new_coord = RotateFlip.__rotate90(
+                image, coords, "cw", channel_list)
         elif draw >= 1./8. and draw < 1./4.:
-            new_image, new_coord = RotateFlip.__rotate90(image, coords, "ccw")
+            new_image, new_coord = RotateFlip.__rotate90(
+                image, coords, "ccw", channel_list)
         elif draw >= 1./4. and draw < 3./8.:
-            new_image, new_coord = RotateFlip.__flip(image, coords, "h")
+            new_image, new_coord = RotateFlip.__flip(
+                image, coords, "h", channel_list)
         elif draw >= 3./8. and draw < 1./2.:
-            new_image, new_coord = RotateFlip.__flip(image, coords, "v")
+            new_image, new_coord = RotateFlip.__flip(
+                image, coords, "v", channel_list)
         else:
             return None, None
         return new_image, new_coord
@@ -153,13 +163,28 @@ class RotateFlip(ImagePreprocessor):
 class ContrastEnhancer(ImagePreprocessor):
     '''Enhances contrast in the image
     '''
-    def __init__(self):
-        super(ContrastEnhancer, self).__init__("add_channel")
+    def __init__(self, enhancement_type, placement='add_channel'):
+        assert placement in ['add_channel', 'replace']
+        super(ContrastEnhancer, self).__init__(placement)
+        self.__filter_fn = {
+            "equalize": ContrastEnhancer.__equalize_hist,
+            "roberts": skimage.filters.roberts,
+            "sobel": skimage.filters.sobel,
+            "canny": ContrastEnhancer.__canny,
+        }[enhancement_type]
 
-    def _process_one_image(self, image, coords):
-        new_image = np.empty(image.shape)
-        for i in range(len(image)):
-            new_image[i] = exposure.equalize_hist(image)[i] * 255
+    @staticmethod
+    def __equalize_hist(image):
+        return skimage.exposure.equalize_hist(image) * 255
+
+    @staticmethod
+    def __canny(image):
+        return skimage.feature.canny(image, sigma=1.5)
+
+    def _process_one_image(self, image, coords, channel_list):
+        new_image = image
+        for i in channel_list:
+            new_image[i] = self.__filter_fn(image[i])
         return(new_image, coords)
 
 
