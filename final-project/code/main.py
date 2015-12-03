@@ -1,16 +1,17 @@
 #!/usr/bin/env python
 '''Main Program for Training over the Facial Keypoints dataset.
 '''
+import argparse
 import code
 import datetime
 import json
-import optparse
 import os
 import random
 import subprocess
 import sys
 import time
 
+import lasagne
 import numpy as np
 
 import batch
@@ -42,10 +43,11 @@ class Tee(object):
             f.flush()
 
 
-def get_git_revision_hash():
+def get_version():
     '''Returns the current git revision as a string
     '''
-    return subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip()
+    return "git rev = %s" % (
+        subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip())
 
 
 def load_nnet_config(filename, options):
@@ -81,12 +83,13 @@ def real_main(options):
     # Tee the output to a logfile.
     console_fd = open('console_log.txt', 'a')
     sys.stdout = Tee(sys.stdout, console_fd)
+    sys.stderr = Tee(sys.stderr, console_fd)
     print "Tee done; subsequent prints appear on terminal and console_log.txt"
 
     #
     # Log the current git revision/cmdline for reproducibility
     #
-    print "git rev = %s" % get_git_revision_hash()
+    print get_version()
     print "cmdline = '%s'" % " ".join(sys.argv)
 
     # Load the nnet_config
@@ -102,9 +105,15 @@ def real_main(options):
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
     #
-    # Map/Drop NaNs
+    # Convert raw data from float64 to floatX (32/64-bit depending on GPU/CPU)
     #
     raw_data = faces.get_data()
+    raw_data['X'] = lasagne.utils.floatX(raw_data['X'])
+    raw_data['Y'] = lasagne.utils.floatX(raw_data['Y'])
+
+    #
+    # Map/Drop NaNs
+    #
     if options.drop_nans:
         to_keep = ~(np.isnan(raw_data['Y']).any(1))
         raw_data['X'] = raw_data['X'][to_keep]
@@ -193,57 +202,55 @@ def main():
     #
     # Create list of options and parse them.
     #
-    parser = optparse.OptionParser()
-    parser.add_option(
-        '-o', '--output_dir', dest='run_data_path', type="string",
+    parser = argparse.ArgumentParser(
+        version=get_version(),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        '-o', '--output_dir', dest='run_data_path',
         metavar="PATH",
         default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'),
-        help=("directory to place run information and state "
-              "[default: run_<TIMESTAMP>]"))
-    parser.add_option(
-        '-e', '--epochs', dest='num_epochs', type="int", metavar="EPOCHS",
+        help="directory to place run information and state ")
+    parser.add_argument(
+        '-e', '--epochs', dest='num_epochs', type=int, metavar="EPOCHS",
         default=100,
-        help="number of epochs to train against [default: %default]")
-    parser.add_option(
-        '-i', '--interval', dest='save_state_interval', type="int",
+        help="number of epochs to train against")
+    parser.add_argument(
+        '-i', '--interval', dest='save_state_interval', type=int,
         metavar="EPOCHS",
         default=10,
-        help=("how often (in epochs) to save internal model state"
-              "[default: %default]"))
-    parser.add_option(
-        '-b', '--batchsize', dest='batchsize', type="int", metavar="ROWS",
+        help="how often (in epochs) to save internal model state")
+    parser.add_argument(
+        '-b', '--batchsize', dest='batchsize', type=int, metavar="ROWS",
         default=None,
         help="override the batchsize specified in config_file")
-    parser.add_option(
-        '-c', '--config_file', dest='config_file', type='string',
+    parser.add_argument(
+        '-c', '--config_file', dest='config_file',
         metavar="FILE", default="configs/default.cfg",
-        help="neural network configuration file [default: %default]")
+        help="neural network configuration file")
 
-    data_group = optparse.OptionGroup(
-        parser, "Data Options", "Options for controlling the input data.")
-    data_group.add_option(
-        '--faces_csv', dest='faces_csv', type='string',
+    data_group = parser.add_argument_group(
+        "Data Options", "Options for controlling the input data.")
+    data_group.add_argument(
+        '--faces_csv', dest='faces_csv',
         metavar="PATH", default=os.path.abspath("../data/training.csv"),
-        help="path to the faces CSV file [default: %default]")
-    data_group.add_option(
-        '--faces_pickle', dest='faces_pickled', type='string',
+        help="path to the faces CSV file")
+    data_group.add_argument(
+        '--faces_pickle', dest='faces_pickled',
         metavar="PATH", default=os.path.abspath("../data/training.pkl.gz"),
-        help="path to the faces pickle file [default: %default]")
-    data_group.add_option(
-        '-n', '--num_rows', dest='num_rows', type="int", metavar="ROWS",
+        help="path to the faces pickle file")
+    data_group.add_argument(
+        '--num_rows', dest='num_rows', type=int, metavar="ROWS",
         default=None,
-        help="rows from the dataset to use [default: all]")
-    data_group.add_option(
+        help="override to specify number of first rows to use")
+    data_group.add_argument(
         '--drop_nans', dest='drop_nans', action="store_true",
-        help=("option to drop target NaNs instead of mapping to cardinal "
-              "[default: map]"))
-    data_group.add_option(
-        '--nan_cardinal', dest='nan_cardinal', type='int', metavar="VALUE",
+        help="option to drop target NaNs instead of mapping to cardinal ")
+    data_group.add_argument(
+        '--nan_cardinal', dest='nan_cardinal', type=int, metavar="VALUE",
         default=-1,
-        help=("cardinal value to use for target NaNs [default: %default]"))
-    parser.add_option_group(data_group)
+        help="cardinal value to use for target NaNs")
 
-    options, _ = parser.parse_args()
+    options = parser.parse_args()
 
     # Create a directory for our work.
     if os.path.exists(options.run_data_path):
