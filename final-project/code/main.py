@@ -6,7 +6,6 @@ import code
 import datetime
 import json
 import os
-import random
 import subprocess
 import sys
 import time
@@ -20,6 +19,7 @@ import fileio
 import partition
 import perceptron
 import preprocess
+
 
 class Tee(object):
     '''Tees file descriptors so that writes are made everywhere simultaneously.
@@ -132,40 +132,46 @@ def real_main(options):
     #
     np.random.seed(0x0FEDFACE)
 
+    def print_partition_sizes(data):
+        '''Prints the partition sizes.
+        '''
+        for k in data.keys():
+            print("%20s X.shape=%s, Y.shape=%s" % (
+                k, data[k]['X'].shape, data[k]['Y'].shape))
+
     start_time = time.time()
     partitioner = partition.Partitioner(
         raw_data, {'train': 60, 'validate': 20, 'test': 20},
         "partition_indices.pkl")
     partitions = partitioner.run()
+    print_partition_sizes(partitions)
     print "Partition Took {:.3f}s".format(time.time() - start_time)
-
-    for k in partitions.keys():
-        print("%20s X.shape=%s, Y.shape=%s" % (
-            k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
 
     #
     # Run any transformations on the training dataset here.
     #
+    print "Preprocessing Transformations"
+    start_time = time.time()
 
-    for i in range(partitions['train']['X'].shape[0]):
-        partitions['train']['X'][i][0] = preprocess.enhance_contrast(partitions['train']['X'][i][0])
+    # Rotate/Flip first to avoid having to rotate and flip both the contrast
+    # and the regular image.
+    rotate_flip = preprocess.RotateFlip()
+    rotate_flip.process_in_place(partitions['train'])
 
-        draw = random.uniform(0,1)
-        if draw < 0.125:
-            partitions['train']['X'][i][0], foo = preprocess.rotate(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], True)
-        elif 0.125 <= draw < 0.25:
-            partitions['train']['X'][i][0], foo = preprocess.rotate(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], False)
-        elif 0.25 <= draw < 0.375:
-            partitions['train']['X'][i][0], foo = preprocess.flip(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], True)
-        elif 0.375 <= draw < 0.5:
-            partitions['train']['X'][i][0], foo = preprocess.flip(partitions['train']['X'][i][0], partitions['train']['Y'][i,:], True)
+    # Contrast Enhancements
+    contrast = preprocess.ContrastEnhancer()
+    contrast.process_partitions_in_place(partitions)
+
+    print_partition_sizes(partitions)
+    print "Transformations Took {:.3f}s".format(time.time() - start_time)
 
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
     # batchsize = options.batchsize
     start_time = time.time()
-    mlp = perceptron.ConvolutionalMLP(nnet_config, (1, 96, 96), 30)
+    mlp = perceptron.ConvolutionalMLP(
+        nnet_config, partitions['train']['X'][0].shape, 30)
     print mlp
     mlp.build_network()
     print "Building Network Took {:.3f}s".format(time.time() - start_time)
@@ -193,7 +199,8 @@ def real_main(options):
     print partitions['test']['Y'][0]
 
     # Drop into a console so that we do anything additional we need.
-    # code.interact(local=locals())
+    if options.drop_to_console:
+        code.interact(local=locals())
 
 
 def main():
@@ -227,6 +234,9 @@ def main():
         '-c', '--config_file', dest='config_file',
         metavar="FILE", default="configs/default.cfg",
         help="neural network configuration file")
+    parser.add_argument(
+        '--console', dest='drop_to_console', action="store_true",
+        help="drop to console after finishing processing")
 
     data_group = parser.add_argument_group(
         "Data Options", "Options for controlling the input data.")
