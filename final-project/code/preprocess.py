@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import skimage.util as skim
 
-from skimage import exposure
+from skimage import exposure, feature
+from skimage.filters import roberts, sobel
 
 import fileio
 
@@ -44,6 +45,8 @@ def enhance_contrast(face):
 	glob = exposure.equalize_hist(face) * 255
 	return glob
 
+
+
 ### TEST ###
 
 # faces = fileio.FaceReader("../data/training.csv", "../data/training.pkl.gz", 
@@ -57,6 +60,30 @@ def enhance_contrast(face):
 # face = X[9][0]
 # kp = Y[9]
 # x_kp, y_kp = split_kp(kp)
+
+# fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
+
+# ax1.imshow(face, cmap=plt.cm.Greys_r)
+# ax1.plot(x_kp, y_kp, 'rx')
+# ax1.axis('off')
+# ax1.set_title('Original', fontsize=10)
+
+# ax2.imshow(roberts(face), cmap=plt.cm.Greys_r)
+# ax2.plot(x_kp, y_kp, 'rx')
+# ax2.axis('off')
+# ax2.set_title('Roberts', fontsize=10)
+
+# ax3.imshow(sobel(face), cmap=plt.cm.Greys_r)
+# ax3.plot(x_kp, y_kp, 'rx')
+# ax3.axis('off')
+# ax3.set_title('Sobel', fontsize=10)
+
+# ax4.imshow(feature.canny(face, sigma=1.5), cmap=plt.cm.Greys_r)
+# ax4.plot(x_kp, y_kp, 'rx')
+# ax4.axis('off')
+# ax4.set_title('Canny', fontsize=10)
+
+# plt.show()
 
 # code.interact(local=locals())
 
