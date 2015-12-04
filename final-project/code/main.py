@@ -105,102 +105,103 @@ def real_main(options):
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
     #
-    # Convert raw data from float64 to floatX (32/64-bit depending on GPU/CPU)
+    # Which features to predict
     #
-    raw_data = faces.get_data()
-    raw_data['X'] = lasagne.utils.floatX(raw_data['X'])
-    raw_data['Y'] = lasagne.utils.floatX(raw_data['Y'])
+    feature_dict = dict()
+    count = 0
+    for line in file(os.path.abspath("../feature_groups.csv")):
+        count += 1
+        if count > 2:
+            break
+        line_list = ([x.strip() for x in line.split(',')])
+        feature_dict[line_list[0]] = map(int, line_list[1:])
 
-    #
-    # Map/Drop NaNs
-    #
-    if options.drop_nans:
-        to_keep = ~(np.isnan(raw_data['Y']).any(1))
-        raw_data['X'] = raw_data['X'][to_keep]
-        raw_data['Y'] = raw_data['Y'][to_keep]
-        print "Dropping samples with NaNs: {:3.1f}% dropped".format(
-            float(sum(~to_keep))/float(len(to_keep))*100.)
-    else:
-        to_replace = np.isnan(raw_data['Y'])
-        raw_data['Y'][to_replace] = options.nan_cardinal
-        print "Replaced NaNs with cardinal value of %d [%3.1f%% of data]" % (
-            options.nan_cardinal,
-            float(np.sum(to_replace))/float(to_replace.size)*100.)
+    # Try running the network for each group of features
+    for fgrp in feature_dict:
 
-    #
-    # Partition the Dataset
-    #
-    np.random.seed(0x0FEDFACE)
+        # Convert raw data from float64 to floatX
+        # (32/64-bit depending on GPU/CPU)
+        raw_data = faces.get_data()
+        raw_data['X'] = lasagne.utils.floatX(raw_data['X'])
+        raw_data['Y'] = lasagne.utils.floatX(raw_data['Y'])
 
-    def print_partition_sizes(data):
-        '''Prints the partition sizes.
-        '''
-        for k in data.keys():
+        features = feature_dict[fgrp]
+        num_features = len(features)
+        raw_data['Y'] = raw_data['Y'][:, features]
+
+        #
+        # Map/Drop NaNs
+        #
+        if options.drop_nans:
+            to_keep = ~(np.isnan(raw_data['Y']).any(1))
+            raw_data['X'] = raw_data['X'][to_keep]
+            raw_data['Y'] = raw_data['Y'][to_keep]
+            print "Dropping samples with NaNs: {:3.1f}% dropped".format(
+                float(sum(~to_keep))/float(len(to_keep))*100.)
+        else:
+            to_replace = np.isnan(raw_data['Y'])
+            raw_data['Y'][to_replace] = options.nan_cardinal
+            print "Replaced NaNs with cardinal=%d [%3.1f%% of data]" % (
+                options.nan_cardinal,
+                float(np.sum(to_replace))/float(to_replace.size)*100.)
+
+        #
+        # Partition the Dataset
+        #
+        np.random.seed(0x0FEDFACE)
+
+        start_time = time.time()
+        partitioner = partition.Partitioner(
+            raw_data, {'train': 60, 'validate': 20, 'test': 20},
+            "partition_indices.pkl")
+        partitions = partitioner.run()
+        print "Partition Took {:.3f}s".format(time.time() - start_time)
+
+        for k in partitions.keys():
             print("%20s X.shape=%s, Y.shape=%s" % (
-                k, data[k]['X'].shape, data[k]['Y'].shape))
+                k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
 
-    start_time = time.time()
-    partitioner = partition.Partitioner(
-        raw_data, {'train': 60, 'validate': 20, 'test': 20},
-        "partition_indices.pkl")
-    partitions = partitioner.run()
-    print_partition_sizes(partitions)
-    print "Partition Took {:.3f}s".format(time.time() - start_time)
+        #
+        # Run any transformations on the training dataset here.
+        #
 
-    #
-    # Run any transformations on the training dataset here.
-    #
-    print "Preprocessing Transformations"
-    start_time = time.time()
+        #
+        # Instantiate and Build the Convolutional Multi-Level Perceptron
+        #
+        # batchsize = options.batchsize
+        start_time = time.time()
+        mlp = perceptron.ConvolutionalMLP(
+            nnet_config, (1, 96, 96), num_features)
+        print mlp
+        mlp.build_network()
+        print "Building Network Took {:.3f}s".format(time.time() - start_time)
 
-    # Rotate/Flip first to avoid having to rotate and flip both the contrast
-    # and the regular image.
-    rotate_flip = preprocess.RotateFlip('replace')
-    rotate_flip.process_in_place(partitions['train'])
+        #
+        # Finally, launch the training loop.
+        #
+        print "Starting training..."
+        loss_log = data_logger.CSVEpochLogger(
+            "loss_%05d.csv", "loss_" + fgrp.replace(" ", "_") + ".csv",
+            np.concatenate(
+                (['train_loss'],
+                 [faces.get_labels()['Y'][i] for i in features])))
+        resumer = batch.TrainingResumer(
+            mlp, "epochs_done.txt", "state_%05d.pkl.gz",
+            options.save_state_interval)
+        trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'],
+                                       partitions, loss_log, resumer)
+        trainer.train(options.num_epochs)
 
-    # Contrast Enhancements
-    contrast = preprocess.ContrastEnhancer('sobel')
-    contrast.process_partitions_in_place(partitions)
+        #
+        # Run the final predict_y to see the output against the actual one.
+        # This is more of a sanity check for us.
+        #
+        y_pred = trainer.predict_y(partitions['test']['X'])
+        print y_pred[0]
+        print partitions['test']['Y'][0]
 
-    print_partition_sizes(partitions)
-    print "Transformations Took {:.3f}s".format(time.time() - start_time)
-
-    #
-    # Instantiate and Build the Convolutional Multi-Level Perceptron
-    #
-    # batchsize = options.batchsize
-    start_time = time.time()
-    mlp = perceptron.ConvolutionalMLP(
-        nnet_config, partitions['train']['X'][0].shape, 30)
-    print mlp
-    mlp.build_network()
-    print "Building Network Took {:.3f}s".format(time.time() - start_time)
-
-    #
-    # Finally, launch the training loop.
-    #
-    print "Starting training..."
-    loss_log = data_logger.CSVEpochLogger(
-        "loss_%05d.csv", "loss.csv",
-        np.concatenate((['train_loss'], faces.get_labels()['Y'])))
-    resumer = batch.TrainingResumer(
-        mlp, "epochs_done.txt", "state_%05d.pkl.gz",
-        options.save_state_interval)
-    trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'], partitions,
-                                   loss_log, resumer)
-    trainer.train(options.num_epochs)
-
-    #
-    # Run the final predict_y to see the output against the actual one.
-    # This is more of a sanity check for us.
-    #
-    y_pred = trainer.predict_y(partitions['test']['X'])
-    print y_pred[0]
-    print partitions['test']['Y'][0]
-
-    # Drop into a console so that we do anything additional we need.
-    if options.drop_to_console:
-        code.interact(local=locals())
+        # Drop into a console so that we do anything additional we need.
+        # code.interact(local=locals())
 
 
 def main():
