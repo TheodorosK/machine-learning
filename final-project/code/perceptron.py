@@ -135,6 +135,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
                         lyr,
                         p=hidden['dropout'],
                         name=('dropout_%d' % i))
+                i += 1
 
         if 'output_nonlinearity' in self.__config:
             output_nonlinearity = self.__LINEARITY_TYPES[
