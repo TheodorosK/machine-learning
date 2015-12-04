@@ -114,12 +114,11 @@ def real_main(options):
 
     # Try running the network for each group of features
     for feature_name, feature_cols in feature_dict.iteritems():
-        feature_path = os.path.abspath(os.path.join(
-            options.run_data_path, feature_name))
+        feature_path = os.path.abspath(feature_name)
         print "Training Feature Set=%s in %s" % (feature_name, feature_path)
-        if ~os.path.exists(feature_name):
-            os.mkdir(feature_name)
-        os.chdir(feature_name)
+        if not os.path.exists(feature_path):
+            os.mkdir(feature_path)
+        os.chdir(feature_path)
 
         # Convert raw data from float64 to floatX
         # (32/64-bit depending on GPU/CPU)
@@ -223,8 +222,7 @@ def main():
     parser.add_argument(
         '-o', '--output_dir', dest='run_data_path',
         metavar="PATH",
-        default=os.path.abspath(
-            datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S')),
+        default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'),
         help="directory to place run information and state ")
     parser.add_argument(
         '-e', '--epochs', dest='num_epochs', type=int, metavar="EPOCHS",
@@ -282,6 +280,8 @@ def main():
     else:
         print "Creating data directory at %s" % options.run_data_path
         os.mkdir(options.run_data_path)
+
+    options.run_data_path = os.path.abspath(options.run_data_path)
 
     real_main(options)
 
