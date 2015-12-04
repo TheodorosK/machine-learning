@@ -62,7 +62,7 @@ class Partitioner(object):
     def __load_indices(self):
         '''Loads the partition indices from disk to recreate state.
         '''
-        with open(self.__cache_file, 'r') as file_descriptor:
+        with open(self.__cache_file, 'rb') as file_descriptor:
             unpickler = pickle.Unpickler(file_descriptor)
             self.__labels_indices = unpickler.load()
 
