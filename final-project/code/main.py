@@ -109,13 +109,28 @@ def real_main(options):
     #
     # Which features to predict
     #
-    with open(options.feature_group) as feature_fd:
+    with open(options.feature_group_file) as feature_fd:
         feature_dict = json.load(feature_fd)
 
+    if options.feature_groups is None:
+        features_to_train = feature_dict
+    else:
+        if not all(k in feature_dict for k in options.feature_groups):
+            raise KeyError(
+                ("one or more of the following features cannot be found %s" %
+                    options.feature_groups))
+        features_to_train = dict((k, feature_dict[k]) for k in
+                                 options.feature_groups if k in feature_dict)
+
     # Try running the network for each group of features
-    for feature_name, feature_cols in sorted(feature_dict.iteritems()):
+    print "Training "
+    for feature_index, (feature_name, feature_cols) in enumerate(sorted(
+            features_to_train.items())):
+        print "Feature Set(%d/%d)=%s" % (
+            feature_index+1, len(features_to_train), feature_name)
+
         feature_path = os.path.abspath(feature_name)
-        print "Training Feature Set=%s in %s" % (feature_name, feature_path)
+        print "Changing to %s" % feature_path
         if not os.path.exists(feature_path):
             os.mkdir(feature_path)
         os.chdir(feature_path)
@@ -154,7 +169,7 @@ def real_main(options):
         #
         start_time = time.time()
         partitioner = partition.Partitioner(
-            raw_data, {'train': 60, 'validate': 20, 'test': 20},
+            raw_data, {'train': 70, 'validate': 30},
             os.path.join(options.run_data_path, "partition_indices.pkl"))
         partitions = partitioner.run()
         print "Partition Took {:.3f}s".format(time.time() - start_time)
@@ -193,16 +208,9 @@ def real_main(options):
         trainer.train(options.num_epochs)
 
         #
-        # Run the final predict_y to see the output against the actual one.
-        # This is more of a sanity check for us.
-        #
-        y_pred = trainer.predict_y(partitions['test']['X'])
-        print y_pred[0]
-        print partitions['test']['Y'][0]
-
-        #
         # Change back to the run directory for the next run.
         #
+        print "Changing to %s" % options.run_data_path
         os.chdir(options.run_data_path)
 
     # Drop into a console so that we do anything additional we need.
@@ -244,6 +252,10 @@ def main():
     parser.add_argument(
         '--console', dest='drop_to_console', action="store_true",
         help="drop to console after finishing processing")
+    parser.add_argument(
+        '--feature_groups', dest='feature_groups', metavar="FEAT",
+        default=None, nargs="+",
+        help="feature groups to train")
 
     data_group = parser.add_argument_group(
         "Data Options", "Options for controlling the input data.")
@@ -256,7 +268,7 @@ def main():
         metavar="PATH", default=os.path.abspath("../data/training.pkl.gz"),
         help="path to the faces pickle file")
     data_group.add_argument(
-        '--feature_group', dest='feature_group',
+        '--feature_group_file', dest='feature_group_file',
         metavar="PATH", default=os.path.abspath("feature_groups.json"),
         help="path to the featuer groups")
     data_group.add_argument(
