@@ -66,7 +66,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
     '''
     __LINEARITY_TYPES = {
         'rectify': lasagne.nonlinearities.rectify,
-        'tanh': lasagne.nonlinearities.tanh
+        'tanh': lasagne.nonlinearities.tanh,
+        'leaky_rectify': lasagne.nonlinearities.leaky_rectify
     }
 
     # This isn't great, but it's a one-off
