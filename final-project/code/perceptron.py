@@ -83,13 +83,13 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         self.__input_var = T.tensor4('input')
         self.__target_var = T.matrix('target')
 
-        self.__network = None
+        self._network = None
         self._create_network()
         self.__train_fn = None
         self.__validate_fn = None
 
     def _create_network(self):
-        if self.__network is not None:
+        if self._network is not None:
             raise AssertionError('Cannot call BuildNetwork more than once')
 
         # pylint: disable=redefined-variable-type
@@ -145,7 +145,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             output_nonlinearity = None
 
         # Output Layer
-        self.__network = lasagne.layers.DenseLayer(
+        self._network = lasagne.layers.DenseLayer(
             lyr, num_units=self.__output_width,
             nonlinearity=output_nonlinearity,
             name='output')
@@ -153,12 +153,12 @@ class ConvolutionalMLP(MultiLevelPerceptron):
     def build_network(self):
         # The output of the entire network is the prediction, define loss to be
         # the RMSE of the predicted values.
-        prediction = lasagne.layers.get_output(self.__network)
+        prediction = lasagne.layers.get_output(self._network)
         loss = lasagne.objectives.squared_error(prediction, self.__target_var)
         loss = lasagne.objectives.aggregate(loss, mode='mean')
 
         # Grab the parameters and define the update scheme.
-        params = lasagne.layers.get_all_params(self.__network, trainable=True)
+        params = lasagne.layers.get_all_params(self._network, trainable=True)
         updates = lasagne.updates.nesterov_momentum(
             loss, params, learning_rate=self.__config['learning_rate'],
             momentum=self.__config['momentum'])
@@ -167,7 +167,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         # (this turns off noise-sources, if we had any and possibly does things
         # related to dropout layers, etc.).  Again, loss is defined using rmse.
         test_prediction = lasagne.layers.get_output(
-            self.__network, deterministic=True)
+            self._network, deterministic=True)
         test_loss = lasagne.objectives.squared_error(
             test_prediction, self.__target_var)
 
@@ -182,7 +182,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 
     def predict(self, x_values):
         return(lasagne.layers.get_output(
-            self.__network, x_values, deterministic=True).eval())
+            self._network, x_values, deterministic=True).eval())
 
     def train(self, x_values, y_values):
         return self.__train_fn(x_values, y_values)
@@ -191,18 +191,30 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         return self.__validate_fn(x_values, y_values)
 
     def get_state(self):
-        return lasagne.layers.get_all_param_values(self.__network)
+        return lasagne.layers.get_all_param_values(self._network)
 
     def set_state(self, state):
-        lasagne.layers.set_all_param_values(self.__network, state)
+        lasagne.layers.set_all_param_values(self._network, state)
 
     def __str__(self):
         ret_string = "Convoluational MLP:\n%s\n" % (
             json.dumps(self.__config, sort_keys=True))
 
-        lyrs = lasagne.layers.get_all_layers(self.__network)
+        lyrs = lasagne.layers.get_all_layers(self._network)
         ret_string += "  Layer Shapes:\n"
         for lyr in lyrs:
             ret_string += "\t%20s = %s\n" % (
                 lyr.name, lasagne.layers.get_output_shape(lyr))
         return ret_string
+
+
+class AmputatedMLP(ConvolutionalMLP):
+
+    def __init__(self, config, input_shape, output_width):
+        super(AmputatedMLP, self).__init__(
+            config, input_shape, output_width)
+
+    def predict(self, x_values):
+        lyrs = lasagne.layers.get_all_layers(self._network)
+        return(lasagne.layers.get_output(
+            lyrs[len(lyrs)-2], x_values, deterministic=True).eval())
