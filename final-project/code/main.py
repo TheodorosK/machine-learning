@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 
+import argcomplete
 import lasagne
 import numpy as np
 
@@ -272,6 +273,7 @@ def main():
         default=-1,
         help="cardinal value to use for target NaNs")
 
+    argcomplete.autocomplete(parser)
     options = parser.parse_args()
 
     # Create a directory for our work.
