@@ -113,7 +113,7 @@ def real_main(options):
         feature_dict = json.load(feature_fd)
 
     # Try running the network for each group of features
-    for feature_name, feature_cols in feature_dict.iteritems():
+    for feature_name, feature_cols in sorted(feature_dict.iteritems()):
         feature_path = os.path.abspath(feature_name)
         print "Training Feature Set=%s in %s" % (feature_name, feature_path)
         if not os.path.exists(feature_path):
@@ -136,18 +136,18 @@ def real_main(options):
         #
         # Map/Drop NaNs
         #
-        if options.drop_nans:
-            to_keep = ~(np.isnan(raw_data['Y']).any(1))
-            raw_data['X'] = raw_data['X'][to_keep]
-            raw_data['Y'] = raw_data['Y'][to_keep]
-            print "Dropping samples with NaNs: {:3.1f}% dropped".format(
-                float(sum(~to_keep))/float(len(to_keep))*100.)
-        else:
+        if options.keep_nans:
             to_replace = np.isnan(raw_data['Y'])
             raw_data['Y'][to_replace] = options.nan_cardinal
             print "Replaced NaNs with cardinal=%d [%3.1f%% of data]" % (
                 options.nan_cardinal,
                 float(np.sum(to_replace))/float(to_replace.size)*100.)
+        else:
+            to_keep = ~(np.isnan(raw_data['Y']).any(1))
+            raw_data['X'] = raw_data['X'][to_keep]
+            raw_data['Y'] = raw_data['Y'][to_keep]
+            print "Dropping samples with NaNs: {:3.1f}% dropped".format(
+                float(sum(~to_keep))/float(len(to_keep))*100.)
 
         #
         # Partition the Dataset
@@ -264,7 +264,7 @@ def main():
         default=None,
         help="override to specify number of first rows to use")
     data_group.add_argument(
-        '--drop_nans', dest='drop_nans', action="store_true",
+        '--keep_nans', dest='keep_nans', action="store_true",
         help="option to drop target NaNs instead of mapping to cardinal ")
     data_group.add_argument(
         '--nan_cardinal', dest='nan_cardinal', type=int, metavar="VALUE",
