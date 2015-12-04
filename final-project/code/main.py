@@ -200,8 +200,9 @@ def real_main(options):
         print y_pred[0]
         print partitions['test']['Y'][0]
 
-        # Drop into a console so that we do anything additional we need.
-        # code.interact(local=locals())
+    # Drop into a console so that we do anything additional we need.
+    if options.drop_to_console:
+        code.interact(local=locals())
 
 
 def main():
