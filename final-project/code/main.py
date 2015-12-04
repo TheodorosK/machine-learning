@@ -78,6 +78,7 @@ def real_main(options):
     #
     # Change to the run data directory
     #
+    print "Changing to Run Directory=%s" % options.run_data_path
     os.chdir(options.run_data_path)
 
     # Tee the output to a logfile.
@@ -112,7 +113,9 @@ def real_main(options):
 
     # Try running the network for each group of features
     for feature_name, feature_cols in feature_dict.iteritems():
-        print "Training Feature Set=%s" % feature_name
+        feature_path = os.path.abspath(os.path.join(
+            options.run_data_path, feature_name))
+        print "Training Feature Set=%s in %s" % (feature_name, feature_path)
         if ~os.path.exists(feature_name):
             os.mkdir(feature_name)
         os.chdir(feature_name)
@@ -152,8 +155,7 @@ def real_main(options):
         start_time = time.time()
         partitioner = partition.Partitioner(
             raw_data, {'train': 60, 'validate': 20, 'test': 20},
-            os.path.abspath(os.path.join(
-                options.run_data_path, "partition_indices.pkl")))
+            os.path.join(options.run_data_path, "partition_indices.pkl"))
         partitions = partitioner.run()
         print "Partition Took {:.3f}s".format(time.time() - start_time)
 
