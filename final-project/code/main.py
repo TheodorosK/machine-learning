@@ -66,6 +66,44 @@ def load_nnet_config(filename, options):
     return nnet_config
 
 
+def select_data(feature_cols, partitioned, keep_nans, nan_cardinal):
+    selected = {}
+    for name in partitioned.keys():
+        selected[name] = {}
+        selected[name]['X'] = partitioned[name]['X']
+        selected[name]['Y'] = partitioned[name]['Y'][:, feature_cols]
+
+    #
+    # Map/Drop NaNs
+    #
+    if keep_nans:
+        replaced = 0
+        total = 0
+        for name in partitioned.keys():
+            to_replace = np.isnan(selected[name]['Y'])
+            selected[name]['Y'][to_replace] = nan_cardinal
+
+            replaced += np.sum(to_replace)
+            total += to_replace.size
+
+        print "Replaced NaNs with cardinal=%d [%3.1f%% of data]" % (
+            nan_cardinal, float(replaced)/float(total)*100.)
+    else:
+        dropped = 0
+        total = 0
+        for name in partitioned.keys():
+            to_keep = ~(np.isnan(selected[name]['Y']).any(1))
+            selected[name]['X'] = selected[name]['X'][to_keep]
+            selected[name]['Y'] = selected[name]['Y'][to_keep]
+
+            dropped += sum(~to_keep)
+            total += len(to_keep)
+        print "Dropping samples with NaNs: {:3.1f}% dropped".format(
+            float(dropped)/float(total)*100.)
+
+    return selected
+
+
 def real_main(options):
     '''This loads the data, manipulates it and trains the model, it's the glue
     that does all of the work.
@@ -107,6 +145,32 @@ def real_main(options):
     print "Read Took {:.3f}s".format(time.time() - start_time)
 
     #
+    # Partition the Dataset
+    #
+    # Convert raw data from float64 to floatX
+    # (32/64-bit depending on GPU/CPU)
+    typed_data = faces.get_data()
+    typed_data['X'] = lasagne.utils.floatX(typed_data['X'])
+    typed_data['Y'] = lasagne.utils.floatX(typed_data['Y'])
+
+    def print_partition_shapes(partitions):
+        for k in partitions.keys():
+            print("%20s X.shape=%s, Y.shape=%s" % (
+                k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
+
+    start_time = time.time()
+    partitioner = partition.Partitioner(
+        typed_data, {'train': 70, 'validate': 30},
+        os.path.join(options.run_data_path, "partition_indices.pkl"))
+    partitions = partitioner.run()
+    print_partition_shapes(partitions)
+    print "Partition Took {:.3f}s".format(time.time() - start_time)
+
+    #
+    # Run any transformations on the training dataset here.
+    #
+
+    #
     # Which features to predict
     #
     with open(options.feature_group_file) as feature_fd:
@@ -123,11 +187,14 @@ def real_main(options):
                                  options.feature_groups if k in feature_dict)
 
     # Try running the network for each group of features
-    print "Training "
     for feature_index, (feature_name, feature_cols) in enumerate(sorted(
             features_to_train.items())):
-        print "Feature Set(%d/%d)=%s" % (
-            feature_index+1, len(features_to_train), feature_name)
+        #
+        # Setup environment for training a feature
+        #
+        print "\n\n%s\nFeature Set %s (%d of %d)\n%s" % (
+            "#" * 80, feature_name, feature_index+1, len(features_to_train),
+            "#" * 80)
 
         feature_path = os.path.abspath(feature_name)
         print "Changing to %s" % feature_path
@@ -135,52 +202,19 @@ def real_main(options):
             os.mkdir(feature_path)
         os.chdir(feature_path)
 
-        # Convert raw data from float64 to floatX
-        # (32/64-bit depending on GPU/CPU)
-        raw_data = faces.get_data()
-        raw_data['X'] = lasagne.utils.floatX(raw_data['X'])
-        raw_data['Y'] = lasagne.utils.floatX(raw_data['Y'])
-
+        #
+        # Select the Training data
+        #
         # Select feature columns
+        start_time = time.time()
         feature_col_labels = (
             [faces.get_labels()['Y'][i] for i in feature_cols])
-        raw_data['Y'] = raw_data['Y'][:, feature_cols]
-        print "selecting features %s for %s" % (
+        print "Selecting features %s for %s" % (
             feature_col_labels, feature_name)
-
-        #
-        # Map/Drop NaNs
-        #
-        if options.keep_nans:
-            to_replace = np.isnan(raw_data['Y'])
-            raw_data['Y'][to_replace] = options.nan_cardinal
-            print "Replaced NaNs with cardinal=%d [%3.1f%% of data]" % (
-                options.nan_cardinal,
-                float(np.sum(to_replace))/float(to_replace.size)*100.)
-        else:
-            to_keep = ~(np.isnan(raw_data['Y']).any(1))
-            raw_data['X'] = raw_data['X'][to_keep]
-            raw_data['Y'] = raw_data['Y'][to_keep]
-            print "Dropping samples with NaNs: {:3.1f}% dropped".format(
-                float(sum(~to_keep))/float(len(to_keep))*100.)
-
-        #
-        # Partition the Dataset
-        #
-        start_time = time.time()
-        partitioner = partition.Partitioner(
-            raw_data, {'train': 70, 'validate': 30},
-            os.path.join(options.run_data_path, "partition_indices.pkl"))
-        partitions = partitioner.run()
-        print "Partition Took {:.3f}s".format(time.time() - start_time)
-
-        for k in partitions.keys():
-            print("%20s X.shape=%s, Y.shape=%s" % (
-                k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
-
-        #
-        # Run any transformations on the training dataset here.
-        #
+        selected = select_data(feature_cols, partitions,
+                               options.keep_nans, options.nan_cardinal)
+        print_partition_shapes(selected)
+        print "Selecting Data Took {:.3f}s".format(time.time() - start_time)
 
         #
         # Instantiate and Build the Convolutional Multi-Level Perceptron
@@ -204,7 +238,7 @@ def real_main(options):
             mlp, "epochs_done.txt", "state_%05d.pkl.gz",
             options.save_state_interval)
         trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'],
-                                       partitions, loss_log, resumer)
+                                       selected, loss_log, resumer)
         trainer.train(options.num_epochs)
 
         #

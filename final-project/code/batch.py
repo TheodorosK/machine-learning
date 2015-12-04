@@ -166,9 +166,3 @@ class BatchedTrainer(object):
             print "  validation loss:\t\t{:.6f}".format(np.mean(valid_rmse))
 
             self.__resumer.end_epoch(epoch)
-
-        test_rmse = BatchedTrainer.__run_batches(
-            self.__dataset['test'], self.__batchsize,
-            self.__mlp.validate, shuffle=False)
-        print "Final results:"
-        print "  test loss:\t\t\t{:.6f}".format(np.mean(test_rmse))

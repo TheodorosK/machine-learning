@@ -43,12 +43,13 @@ class Partitioner(object):
         samples_used = 0
         for key in labels_sizes.keys():
             # use floating-point precision to gobble up all of the samples.
-            samples_used += labels_sizes[key]/100. * num_samples
-            end_idx = int(np.floor(samples_used))
+            samples_used += float(labels_sizes[key])/100. * num_samples
+            end_idx = int(np.round(samples_used))
             partition[key] = indices[start_idx: end_idx]
 
             start_idx = end_idx
-        assert np.floor(samples_used) == num_samples
+        print "%d/%d" % (start_idx, num_samples)
+        assert start_idx == num_samples
 
         return partition
 
