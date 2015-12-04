@@ -161,6 +161,7 @@ class BatchedTrainer(object):
             train_rmse, valid_rmse = self.__train_one_epoch()
             self.__logger.log(
                 np.concatenate(([train_rmse], valid_rmse)), epoch)
+            self.__mlp.epoch_done_tasks(epoch-1, num_epochs)
             print "  took {:.3f}s".format(time.time() - start_time)
             print "  training loss:\t\t{:.6f}".format(train_rmse)
             print "  validation loss:\t\t{:.6f}".format(np.mean(valid_rmse))

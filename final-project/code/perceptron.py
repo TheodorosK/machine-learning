@@ -5,8 +5,106 @@ import abc
 import json
 
 import lasagne
+import numpy as np
 import theano
 import theano.tensor as T
+
+
+class EndOfEpochUpdate(object):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self):
+        pass
+
+    @abc.abstractmethod
+    def update(self, epoch, total_epochs):
+        pass
+
+
+class AdaptiveLearningRateLog(EndOfEpochUpdate):
+    def __init__(self, config, shared_learn_rate, shared_momentum):
+        super(AdaptiveLearningRateLog, self).__init__()
+        shared_learn_rate.set_value(10.0 ** config['log_learning_rate_start'])
+        shared_momentum.set_value(config['momentum'])
+        self.__config = config
+        self.__shared_learn_rate = shared_learn_rate
+        self.__shared_momentum = shared_momentum
+
+        self.__one_time_init_done = False
+        self.__learning_values = None  # Set by __try_one_time_init
+
+    def __try_one_time_init(self, total_epochs):
+        if self.__one_time_init_done:
+            return
+        self.__one_time_init_done = True
+
+        self.__learning_values = np.logspace(
+            self.__config['log_learning_rate_start'],
+            self.__config['log_learning_rate_end'],
+            total_epochs)
+
+    def update(self, epoch, total_epochs):
+        self.__try_one_time_init(total_epochs)
+
+        new_learning_rate = self.__learning_values[epoch]
+        print "Updated learning-rate: %e" % new_learning_rate
+        self.__shared_learn_rate.set_value(np.float32(new_learning_rate))
+
+
+class AdaptiveLearningRateLin(EndOfEpochUpdate):
+    def __init__(self, config, shared_learn_rate, shared_momentum):
+        super(AdaptiveLearningRateLin, self).__init__()
+        shared_learn_rate.set_value(config['learning_rate_start'])
+        shared_momentum.set_value(config['momentum'])
+        self.__config = config
+        self.__shared_learn_rate = shared_learn_rate
+        self.__shared_momentum = shared_momentum
+
+        self.__one_time_init_done = False
+        self.__learning_values = None  # Set by __try_one_time_init
+
+    def __try_one_time_init(self, total_epochs):
+        if self.__one_time_init_done:
+            return
+        self.__one_time_init_done = True
+
+        self.__learning_values = np.linspace(
+            self.__config['learning_rate_start'],
+            self.__config['learning_rate_end'],
+            total_epochs)
+
+    def update(self, epoch, total_epochs):
+        self.__try_one_time_init(total_epochs)
+
+        new_learning_rate = self.__learning_values[epoch]
+        print "Updated learning-rate: %e" % new_learning_rate
+        self.__shared_learn_rate.set_value(np.float32(new_learning_rate))
+
+
+class StaticLearningRate(EndOfEpochUpdate):
+    def __init__(self, config, shared_learn_rate, shared_momentum):
+        super(StaticLearningRate, self).__init__()
+        shared_learn_rate.set_value(config['learning_rate'])
+        shared_momentum.set_value(config['momentum'])
+
+    def update(self, epoch, total_epochs):
+        pass
+
+
+def LearningRateFactory(config, shared_learn_rate, shared_momentum):
+    if all(k in config.keys() for k in
+           ['log_learning_rate_start', 'log_learning_rate_end']):
+        print "Enabling Adaptive Learning Rate (Log)"
+        return AdaptiveLearningRateLog(
+            config, shared_learn_rate, shared_momentum)
+    elif all(k in config.keys() for k in
+             ['learning_rate_start', 'learning_rate_end']):
+        print "Enabling Adaptive Learning Rate (Linear)"
+        return AdaptiveLearningRateLin(
+            config, shared_learn_rate, shared_learn_rate)
+    else:
+        print "Enabling Static Learning Rate"
+        return StaticLearningRate(config, shared_learn_rate, shared_momentum)
 
 
 class MultiLevelPerceptron:
@@ -87,6 +185,7 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         self._create_network()
         self.__train_fn = None
         self.__validate_fn = None
+        self.__adaptive_update = None
 
     def _create_network(self):
         if self.__network is not None:
@@ -150,6 +249,13 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             nonlinearity=output_nonlinearity,
             name='output')
 
+    def __update_nesterov_params(self, epoch, num_epochs):
+        self.__learning_rate.set_value(1e-9)
+        print self.__learning_rate.get_value()
+
+    def epoch_done_tasks(self, epoch, num_epochs):
+        self.__adaptive_update.update(epoch, num_epochs)
+
     def build_network(self):
         # The output of the entire network is the prediction, define loss to be
         # the RMSE of the predicted values.
@@ -159,9 +265,13 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 
         # Grab the parameters and define the update scheme.
         params = lasagne.layers.get_all_params(self.__network, trainable=True)
+        learning_rate = theano.shared(np.float32(0.))
+        momentum = theano.shared(np.float32(0.))
         updates = lasagne.updates.nesterov_momentum(
-            loss, params, learning_rate=self.__config['learning_rate'],
-            momentum=self.__config['momentum'])
+            loss, params, learning_rate=learning_rate, momentum=momentum)
+
+        self.__adaptive_update = LearningRateFactory(
+            self.__config, learning_rate, momentum)
 
         # For testing the output, use the deterministic parts of the output
         # (this turns off noise-sources, if we had any and possibly does things
