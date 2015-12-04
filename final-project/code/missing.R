@@ -34,3 +34,13 @@ groupNaN <- c(rep(eyecenterNaN, 4), rep(eyecornerNaN, 8), rep(eyebrowNaN, 8), re
 # How many do we drop?
 dropShare <- 100 * (groupNaN - nacols) / (nrow(dat) - nacols)
 dropShare[order(dropShare, decreasing = T)]
+
+# Print (remember that Python 0-indexes and R 1-indexes)
+sink("feature_groups.txt")
+cat("eye center,", paste(eyecenterIdx - 1, collapse=", "), "\n")
+cat("eye corner,", paste(eyecornerIdx - 1, collapse=", "), "\n")
+cat("eyebrow,", paste(eyebrowIdx - 1, collapse=", "), "\n")
+cat("mouth inc bottom,", paste(mouthBottomIdx - 1, collapse=", "), "\n")
+cat("mouth ex bottom,", paste(mouthExBottomIdx - 1, collapse=", "), "\n")
+cat("nose,", paste(noseIdx - 1, collapse=", "), "\n")
+sink()
