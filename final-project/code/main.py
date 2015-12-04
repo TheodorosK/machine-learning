@@ -107,17 +107,15 @@ def real_main(options):
     #
     # Which features to predict
     #
-    feature_dict = dict()
-    count = 0
-    for line in file(os.path.abspath("../feature_groups.csv")):
-        count += 1
-        if count > 2:
-            break
-        line_list = ([x.strip() for x in line.split(',')])
-        feature_dict[line_list[0]] = map(int, line_list[1:])
+    with open(options.feature_group) as feature_fd:
+        feature_dict = json.load(feature_fd)
 
     # Try running the network for each group of features
-    for fgrp in feature_dict:
+    for feature_name, feature_cols in feature_dict.iteritems():
+        print "Training Feature Set=%s" % feature_name
+        if ~os.path.exists(feature_name):
+            os.mkdir(feature_name)
+        os.chdir(feature_name)
 
         # Convert raw data from float64 to floatX
         # (32/64-bit depending on GPU/CPU)
@@ -125,9 +123,12 @@ def real_main(options):
         raw_data['X'] = lasagne.utils.floatX(raw_data['X'])
         raw_data['Y'] = lasagne.utils.floatX(raw_data['Y'])
 
-        features = feature_dict[fgrp]
-        num_features = len(features)
-        raw_data['Y'] = raw_data['Y'][:, features]
+        # Select feature columns
+        feature_col_labels = (
+            [faces.get_labels()['Y'][i] for i in feature_cols])
+        raw_data['Y'] = raw_data['Y'][:, feature_cols]
+        print "selecting features %s for %s" % (
+            feature_col_labels, feature_name)
 
         #
         # Map/Drop NaNs
@@ -148,12 +149,11 @@ def real_main(options):
         #
         # Partition the Dataset
         #
-        np.random.seed(0x0FEDFACE)
-
         start_time = time.time()
         partitioner = partition.Partitioner(
             raw_data, {'train': 60, 'validate': 20, 'test': 20},
-            "partition_indices.pkl")
+            os.path.abspath(os.path.join(
+                options.run_data_path, "partition_indices.pkl")))
         partitions = partitioner.run()
         print "Partition Took {:.3f}s".format(time.time() - start_time)
 
@@ -171,7 +171,7 @@ def real_main(options):
         # batchsize = options.batchsize
         start_time = time.time()
         mlp = perceptron.ConvolutionalMLP(
-            nnet_config, (1, 96, 96), num_features)
+            nnet_config, (1, 96, 96), len(feature_cols))
         print mlp
         mlp.build_network()
         print "Building Network Took {:.3f}s".format(time.time() - start_time)
@@ -181,10 +181,8 @@ def real_main(options):
         #
         print "Starting training..."
         loss_log = data_logger.CSVEpochLogger(
-            "loss_%05d.csv", "loss_" + fgrp.replace(" ", "_") + ".csv",
-            np.concatenate(
-                (['train_loss'],
-                 [faces.get_labels()['Y'][i] for i in features])))
+            "loss_%05d.csv", "loss.csv",
+            np.concatenate((['train_loss'], feature_col_labels)))
         resumer = batch.TrainingResumer(
             mlp, "epochs_done.txt", "state_%05d.pkl.gz",
             options.save_state_interval)
@@ -199,6 +197,11 @@ def real_main(options):
         y_pred = trainer.predict_y(partitions['test']['X'])
         print y_pred[0]
         print partitions['test']['Y'][0]
+
+        #
+        # Change back to the run directory for the next run.
+        #
+        os.chdir(options.run_data_path)
 
     # Drop into a console so that we do anything additional we need.
     if options.drop_to_console:
@@ -217,7 +220,8 @@ def main():
     parser.add_argument(
         '-o', '--output_dir', dest='run_data_path',
         metavar="PATH",
-        default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'),
+        default=os.path.abspath(
+            datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S')),
         help="directory to place run information and state ")
     parser.add_argument(
         '-e', '--epochs', dest='num_epochs', type=int, metavar="EPOCHS",
@@ -250,6 +254,10 @@ def main():
         '--faces_pickle', dest='faces_pickled',
         metavar="PATH", default=os.path.abspath("../data/training.pkl.gz"),
         help="path to the faces pickle file")
+    data_group.add_argument(
+        '--feature_group', dest='feature_group',
+        metavar="PATH", default=os.path.abspath("feature_groups.json"),
+        help="path to the featuer groups")
     data_group.add_argument(
         '--num_rows', dest='num_rows', type=int, metavar="ROWS",
         default=None,
