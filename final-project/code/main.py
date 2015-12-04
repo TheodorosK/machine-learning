@@ -121,11 +121,12 @@ def real_main(options):
         print "Dropping samples with NaNs: {:3.1f}% dropped".format(
             float(sum(~to_keep))/float(len(to_keep))*100.)
     else:
-        to_replace = np.isnan(raw_data['Y'])
-        raw_data['Y'][to_replace] = options.nan_cardinal
-        print "Replaced NaNs with cardinal value of %d [%3.1f%% of data]" % (
-            options.nan_cardinal,
-            float(np.sum(to_replace))/float(to_replace.size)*100.)
+        # to_replace = np.isnan(raw_data['Y'])
+        # raw_data['Y'][to_replace] = options.nan_cardinal
+        # print "Replaced NaNs with cardinal value of %d [%3.1f%% of data]" % (
+        #     options.nan_cardinal,
+        #     float(np.sum(to_replace))/float(to_replace.size)*100.)
+        pass
 
     #
     # Partition the Dataset

@@ -4,6 +4,7 @@
 import abc
 import json
 
+import numpy as np
 import lasagne
 import theano
 import theano.tensor as T
@@ -148,11 +149,22 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             nonlinearity=output_nonlinearity,
             name='output')
 
+    @staticmethod
+    def __selective_loss(predictions, targets):
+        keep = ~np.isnan(targets)
+        return (predictions[keep] - targets[keep])**2
+
     def build_network(self):
         # The output of the entire network is the prediction, define loss to be
         # the RMSE of the predicted values.
         prediction = lasagne.layers.get_output(self.__network)
-        loss = lasagne.objectives.squared_error(prediction, self.__target_var)
+        if ("use_selective_loss" in self.__config and
+                self.__config["use_selective_loss"]):
+            loss = ConvolutionalMLP.__selective_loss(
+                prediction, self.__target_var)
+        else:
+            loss = lasagne.objectives.squared_error(
+                prediction, self.__target_var)
         loss = lasagne.objectives.aggregate(loss, mode='mean')
 
         # Grab the parameters and define the update scheme.
