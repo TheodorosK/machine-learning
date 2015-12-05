@@ -52,12 +52,12 @@ def get_version():
         subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip())
 
 
-def load_nnet_config(filename, options):
+def load_nnet_config(options):
     '''Load the neural network config file and address overrides
     '''
-    print "Loading NNET configuration from %s" % filename
-    assert os.path.exists(filename)
-    with open(filename) as json_fp:
+    print "Loading NNET configuration from %s" % options.config_file
+    assert os.path.exists(options.config_file)
+    with open(options.config_file) as json_fp:
         nnet_config = json.load(json_fp)
 
     # Handle command-line overrides that affect the config
@@ -105,36 +105,52 @@ def select_data(feature_cols, partitioned, keep_nans, nan_cardinal):
     return selected
 
 
-def real_main(options):
+def combine_loss_main(options):
+    with open(options.feature_group_file) as feat_fd:
+        feature_groups = json.load(feat_fd)
+
+    start_time = time.time()
+    combine_loss(options, feature_groups)
+    print "Combining CSVs took {:.3f}s".format(time.time() - start_time)
+
+
+def combine_loss(options, feature_groups):
+    assert os.getcwd() == options.run_data_path
+
+    loss_dfs = {}
+
+    for feature_idx, (feature_name, feature_cols) in enumerate(sorted(
+            feature_groups.items())):
+        if not os.path.exists(feature_name):
+            print "Could not find directory for %s" % feature_name
+            continue
+        os.chdir(feature_name)
+
+        with open('loss.csv') as loss_fd:
+            df = pd.read_csv(loss_fd, index_col="epoch")
+
+        df.rename(columns={
+            "train_loss": "train_loss_" + feature_name,
+            "train_rmse": "train_rmse_" + feature_name
+        }, inplace=True)
+
+        loss_dfs[feature_name] = df
+
+        os.chdir(options.run_data_path)
+
+    assert os.getcwd() == options.run_data_path
+
+    aggregated_loss = pd.concat(loss_dfs.values(), axis=1)
+    with open("loss.csv", 'w') as write_fd:
+        aggregated_loss.to_csv(write_fd)
+
+
+def train_main(options):
     '''This loads the data, manipulates it and trains the model, it's the glue
     that does all of the work.
     '''
-    # pylint: disable=too-many-locals
-    # Yes we have a lot of variables, but this is the main function.
-
-    # Make the config file path absolute (so that a chdir won't affect it)
-    config_file_path = os.path.abspath(options.config_file)
-
-    #
-    # Change to the run data directory
-    #
-    print "Changing to Run Directory=%s" % options.run_data_path
-    os.chdir(options.run_data_path)
-
-    # Tee the output to a logfile.
-    console_fd = open('console_log.txt', 'a')
-    sys.stdout = Tee(sys.stdout, console_fd)
-    sys.stderr = Tee(sys.stderr, console_fd)
-    print "Tee done; subsequent prints appear on terminal and console_log.txt"
-
-    #
-    # Log the current git revision/cmdline for reproducibility
-    #
-    print get_version()
-    print "cmdline = '%s'" % " ".join(sys.argv)
-
     # Load the nnet_config
-    nnet_config = load_nnet_config(config_file_path, options)
+    nnet_config = load_nnet_config(options)
 
     #
     # Load the Dataset
@@ -241,7 +257,8 @@ def real_main(options):
         print "Starting training..."
         loss_log = data_logger.CSVEpochLogger(
             "loss_%05d.csv", "loss.csv",
-            np.concatenate((['train_loss'], feature_col_labels)))
+            np.concatenate((['train_loss', 'train_rmse'],
+                            feature_col_labels)))
         resumer = batch.TrainingResumer(
             mlp, "epochs_done.txt", "state_%05d.pkl.gz",
             options.save_state_interval)
@@ -270,6 +287,11 @@ def real_main(options):
         print "Changing to %s" % options.run_data_path
         os.chdir(options.run_data_path)
 
+    # Finally combine all of the loss-functions to produce a loss output.
+    start_time = time.time()
+    combine_loss(options, features_to_train)
+    print "Combining CSVs took {:.3f}s".format(time.time() - start_time)
+
 
 def main():
     '''Parse Arguments and call real_main
@@ -281,23 +303,13 @@ def main():
         version=get_version(),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
+        'action', nargs='?', choices=('train', 'loss'), default='train',
+        help="action to perform")
+    parser.add_argument(
         '-o', '--output_dir', dest='run_data_path',
         metavar="PATH",
         default=datetime.datetime.now().strftime('run_%Y-%m-%d__%H_%M_%S'),
-        help="directory to place run information and state ")
-    parser.add_argument(
-        '-e', '--epochs', dest='num_epochs', type=int, metavar="EPOCHS",
-        default=100,
-        help="number of epochs to train against")
-    parser.add_argument(
-        '-i', '--interval', dest='save_state_interval', type=int,
-        metavar="EPOCHS",
-        default=10,
-        help="how often (in epochs) to save internal model state")
-    parser.add_argument(
-        '-b', '--batchsize', dest='batchsize', type=int, metavar="ROWS",
-        default=None,
-        help="override the batchsize specified in config_file")
+        help="directory to place run information and state")
     parser.add_argument(
         '-c', '--config_file', dest='config_file',
         metavar="FILE", default="configs/default.cfg",
@@ -312,6 +324,22 @@ def main():
     parser.add_argument(
         '--amputate', dest='amputate', action="store_true",
         help="train a neural network and save output of penultimate layer")
+
+    train_group = parser.add_argument_group(
+        "Training Control", "Options for Controlling Training")
+    train_group.add_argument(
+        '-e', '--epochs', dest='num_epochs', type=int, metavar="EPOCHS",
+        default=100,
+        help="number of epochs to train against")
+    train_group.add_argument(
+        '-i', '--interval', dest='save_state_interval', type=int,
+        metavar="EPOCHS",
+        default=10,
+        help="how often (in epochs) to save internal model state")
+    train_group.add_argument(
+        '-b', '--batchsize', dest='batchsize', type=int, metavar="ROWS",
+        default=None,
+        help="override the batchsize specified in config_file")
 
     data_group = parser.add_argument_group(
         "Data Options", "Options for controlling the input data.")
@@ -351,7 +379,35 @@ def main():
 
     options.run_data_path = os.path.abspath(options.run_data_path)
 
-    real_main(options)
+    # pylint: disable=too-many-locals
+    # Yes we have a lot of variables, but this is the main function.
+
+    # Make the config file path absolute (so that a chdir won't affect it)
+    options.config_file = os.path.abspath(options.config_file)
+
+    #
+    # Change to the run data directory
+    #
+    print "Changing to Run Directory=%s" % options.run_data_path
+    os.chdir(options.run_data_path)
+
+    # Tee the output to a logfile.
+    console_fd = open('console_log.txt', 'a')
+    sys.stdout = Tee(sys.stdout, console_fd)
+    sys.stderr = Tee(sys.stderr, console_fd)
+    print "Tee done; subsequent prints appear on terminal and console_log.txt"
+
+    #
+    # Log the current git revision/cmdline for reproducibility
+    #
+    print get_version()
+    print "cmdline = '%s'" % " ".join(sys.argv)
+
+    # Run the function for the specified action.
+    {
+        'train': train_main,
+        'loss': combine_loss_main
+    }[options.action](options)
 
 
 if __name__ == "__main__":

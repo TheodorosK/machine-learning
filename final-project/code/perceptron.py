@@ -123,10 +123,16 @@ class ConvolutionalMLP(MultiLevelPerceptron):
                     filter_size=tuple(conv['filter_size']),
                     nonlinearity=nonlinearity,
                     name=('conv_2d_%d' % i))
-                lyr = lasagne.layers.MaxPool2DLayer(
-                    lyr,
-                    pool_size=tuple(conv['pooling_size']),
-                    name=('pool_2d_%d' % i))
+                if 'pooling_size' in conv:
+                    lyr = lasagne.layers.MaxPool2DLayer(
+                        lyr,
+                        pool_size=tuple(conv['pooling_size']),
+                        name=('pool_2d_%d' % i))
+                if 'dropout' in conv and conv['dropout'] != 0:
+                    lyr = lasagne.layers.DropoutLayer(
+                        lyr,
+                        p=conv['dropout'],
+                        name=('conv_dropout_%d' % i))
                 i += 1
 
         # Hidden Layers

@@ -164,7 +164,7 @@ class BatchedTrainer(object):
             print "Epoch {} of {}".format(epoch, num_epochs)
             train_loss, train_rmse, valid_rmse = self.__train_one_epoch()
             self.__logger.log(
-                np.concatenate(([train_rmse], valid_rmse)), epoch)
+                np.concatenate(([train_loss, train_rmse], valid_rmse)), epoch)
             print "    took {:.3f}s".format(time.time() - start_time)
             print "  training loss:\t\t{:.6f}".format(train_loss)
             print "  training rmse:\t\t{:.6f}".format(train_rmse)
