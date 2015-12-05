@@ -103,28 +103,32 @@ class BatchedTrainer(object):
     @staticmethod
     def __run_batches(data, batchsize, func, shuffle=False):
         accum_err = 0
+        accum_accuracy = 0
         batch_cnt = 0
         sys.stdout.write('[{}]'.format(len(data['X'])/batchsize))
         for indices in BatchedTrainer.__iterate(data, batchsize, shuffle):
-            accum_err += func(data['X'][indices], data['Y'][indices])
+            err, accuracy = func(data['X'][indices], data['Y'][indices])
+            accum_err += err
+            accum_accuracy += accuracy
             batch_cnt += 1
             sys.stdout.write('.')
             sys.stdout.flush()
         print "done"
-        return accum_err / (batch_cnt * batchsize)
+        return (accum_err / (batch_cnt * batchsize),
+                accum_accuracy / (batch_cnt * batchsize))
 
     def __train_one_epoch(self):
         sys.stdout.write("  train")
-        train_rmse = BatchedTrainer.__run_batches(
+        train_loss, train_rmse = BatchedTrainer.__run_batches(
             self.__dataset['train'], self.__batchsize,
             self.__mlp.train, shuffle=True)
 
         sys.stdout.write("  valid")
-        valid_rmse = BatchedTrainer.__run_batches(
+        valid_loss, _ = BatchedTrainer.__run_batches(
             self.__dataset['validate'], self.__batchsize,
             self.__mlp.validate, shuffle=False)
 
-        return (train_rmse, np.mean(valid_rmse, axis=0))
+        return (train_loss, train_rmse, np.mean(valid_loss, axis=0))
 
     def predict_y(self, x_values):
         '''Predict Y values using the current state of the model and X.
@@ -158,12 +162,13 @@ class BatchedTrainer(object):
         for epoch in range(self.__resumer.resume_training(), num_epochs+1):
             start_time = time.time()
             print "Epoch {} of {}".format(epoch, num_epochs)
-            train_rmse, valid_rmse = self.__train_one_epoch()
+            train_loss, train_rmse, valid_rmse = self.__train_one_epoch()
             self.__logger.log(
                 np.concatenate(([train_rmse], valid_rmse)), epoch)
-            self.__mlp.epoch_done_tasks(epoch-1, num_epochs)
-            print "  took {:.3f}s".format(time.time() - start_time)
-            print "  training loss:\t\t{:.6f}".format(train_rmse)
-            print "  validation loss:\t\t{:.6f}".format(np.mean(valid_rmse))
+            print "    took {:.3f}s".format(time.time() - start_time)
+            print "  training loss:\t\t{:.6f}".format(train_loss)
+            print "  training rmse:\t\t{:.6f}".format(train_rmse)
+            print "  validation rmse:\t\t{:.6f}".format(np.mean(valid_rmse))
 
+            self.__mlp.epoch_done_tasks(epoch-1, num_epochs)
             self.__resumer.end_epoch(epoch)

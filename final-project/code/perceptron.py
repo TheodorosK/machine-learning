@@ -59,6 +59,12 @@ class MultiLevelPerceptron:
         pass
 
     @abc.abstractmethod
+    def epoch_done_tasks(self, epoch, num_epochs):
+        '''Call this at the end of each epoch to perform parameter updates.
+        '''
+        pass
+
+    @abc.abstractmethod
     def __str__(self):
         pass
 
@@ -153,20 +159,32 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             nonlinearity=output_nonlinearity,
             name='output')
 
-    def __update_nesterov_params(self, epoch, num_epochs):
-        self.__learning_rate.set_value(1e-9)
-        print self.__learning_rate.get_value()
-
     def epoch_done_tasks(self, epoch, num_epochs):
         for updater in self.__adaptive_updates:
             updater.update(epoch, num_epochs)
 
     def build_network(self):
         # The output of the entire network is the prediction, define loss to be
-        # the RMSE of the predicted values.
+        # the RMSE of the predicted values + optional l1/l2 penalties.
         prediction = lasagne.layers.get_output(self._network)
         loss = lasagne.objectives.squared_error(prediction, self.__target_var)
         loss = lasagne.objectives.aggregate(loss, mode='mean')
+
+        if 'l1' in self.__config and self.__config['l1']:
+            print "Enabling L1 Regularization"
+            loss += lasagne.regularization.regularize_network_params(
+                self._network, lasagne.regularization.l1)
+
+        if 'l2' in self.__config and self.__config['l2']:
+            print "Enabling L2 Regularization"
+            loss += lasagne.regularization.regularize_network_params(
+                self._network, lasagne.regularization.l2) * 1e-4
+
+        # Training accuracy is simly the rmse.
+        training_accuracy = lasagne.objectives.squared_error(
+            prediction, self.__target_var)
+        training_accuracy = lasagne.objectives.aggregate(
+            training_accuracy, mode='mean')
 
         # Grab the parameters and define the update scheme.
         params = lasagne.layers.get_all_params(self._network, trainable=True)
@@ -199,9 +217,11 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         # Create the training and validation functions that we'll use to train
         # the model and validate the results.
         self.__train_fn = theano.function(
-            [self.__input_var, self.__target_var], loss, updates=updates)
+            [self.__input_var, self.__target_var],
+            [loss, training_accuracy], updates=updates)
         self.__validate_fn = theano.function(
-            [self.__input_var, self.__target_var], test_loss)
+            [self.__input_var, self.__target_var],
+            [test_loss, test_loss])
 
     def predict(self, x_values):
         return(lasagne.layers.get_output(
