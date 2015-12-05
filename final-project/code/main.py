@@ -13,6 +13,7 @@ import time
 import argcomplete
 import lasagne
 import numpy as np
+import pandas as pd
 
 import batch
 import data_logger
@@ -221,7 +222,14 @@ def real_main(options):
         #
         # batchsize = options.batchsize
         start_time = time.time()
-        mlp = perceptron.ConvolutionalMLP(
+        if options.amputate:
+            print "Chose an Amputated MLP"
+            perceptron_type = perceptron.AmputatedMLP
+        else:
+            print "Chose an Convolutional MLP"
+            perceptron_type = perceptron.ConvolutionalMLP
+
+        mlp = perceptron_type(
             nnet_config, (1, 96, 96), len(feature_cols))
         print mlp
         mlp.build_network()
@@ -241,15 +249,26 @@ def real_main(options):
                                        selected, loss_log, resumer)
         trainer.train(options.num_epochs)
 
+        def write_pred(data, filename):
+            data_frame = pd.DataFrame(data)
+            with open(filename, 'w') as file_desc:
+                data_frame.to_csv(file_desc, index=False)
+
+        if options.amputate:
+            yhat_val = trainer.predict_y(selected['validate']['X'])
+            yhat_train = trainer.predict_y(selected['train']['X'])
+            write_pred(yhat_val, "yhat_val.csv")
+            write_pred(yhat_train, "yhat_train.csv")
+
+        # Drop into a console so that we do anything additional we need.
+        if options.drop_to_console:
+            code.interact(local=locals())
+
         #
         # Change back to the run directory for the next run.
         #
         print "Changing to %s" % options.run_data_path
         os.chdir(options.run_data_path)
-
-    # Drop into a console so that we do anything additional we need.
-    if options.drop_to_console:
-        code.interact(local=locals())
 
 
 def main():
@@ -290,6 +309,9 @@ def main():
         '--feature_groups', dest='feature_groups', metavar="FEAT",
         default=None, nargs="+",
         help="feature groups to train")
+    parser.add_argument(
+        '--amputate', dest='amputate', action="store_true",
+        help="train a neural network and save output of penultimate layer")
 
     data_group = parser.add_argument_group(
         "Data Options", "Options for controlling the input data.")
