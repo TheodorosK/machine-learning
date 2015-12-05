@@ -3,10 +3,7 @@ rm(list=ls())
 require(reshape2)
 require(ggplot2)
 
-rx="^train"
-file="run_6_layers/loss.csv"
-
-PlotLoss <- function(file, rx) {
+PlotLoss <- function(file, rx='^train_loss') {
     dat <- read.csv(file)
     loss <- dat[, grep(rx, names(dat))]
     loss <- cbind(epoch=dat$epoch, loss)
