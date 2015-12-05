@@ -3,10 +3,10 @@ rm(list=ls())
 require(reshape2)
 require(ggplot2)
 
-PlotLoss <- function(file, rx='^train_loss') {
+PlotLoss <- function(file, rx='^train_rmse') {
     dat <- read.csv(file)
     loss <- dat[, grep(rx, names(dat))]
-    loss <- cbind(epoch=dat$epoch, loss)
+    loss <- data.frame(epoch=dat$epoch, loss)
     melted <- melt(loss, id.vars = 'epoch')
     
     g <- ggplot(data=melted) + 
