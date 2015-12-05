@@ -187,8 +187,10 @@ class ConvolutionalMLP(MultiLevelPerceptron):
                 self._network, lasagne.regularization.l2) * 1e-4
 
         # Training accuracy is simly the rmse.
+        train_prediction = lasagne.layers.get_output(
+            self._network, deterministic=True)
         training_accuracy = lasagne.objectives.squared_error(
-            prediction, self.__target_var)
+            train_prediction, self.__target_var)
         training_accuracy = lasagne.objectives.aggregate(
             training_accuracy, mode='mean')
 
