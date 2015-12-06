@@ -14,3 +14,23 @@ PlotLoss <- function(file, rx='^train_rmse') {
       scale_y_log10()
     plot(g) 
 }
+
+PlotValidationLoss <- function(file, excl='^train') {
+  dat <- read.csv(file)
+  rmse <- dat[, -grep(excl, names(dat))]
+  melted <- melt(rmse, id.vars='epoch')
+
+  g <- ggplot(data=melted) +
+    geom_line(aes(x=epoch, y=value, color=variable)) +
+    scale_y_log10()
+  plot(g)
+}
+
+PlotEverything <- function(file) {
+  dat <- read.csv(file)
+  melted <- melt(dat, id.vars='epoch')
+  g <- ggplot(data=melted) +
+    geom_line(aes(x=epoch, y=value, color=variable)) +
+    scale_y_log10()
+  plot(g)
+}
