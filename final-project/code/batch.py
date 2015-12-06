@@ -114,13 +114,13 @@ class BatchedTrainer(object):
         for indices in BatchedTrainer.__iterate(data, batchsize, shuffle):
             # Rotate the images if called with rotate enabled
             rotated = {}
-            if rotate:
-                rotator = preprocess.RotateFlip()
-                rotated['X'], rotated['Y'] = rotator.process(
-                    data['X'][indices], data['Y'][indices])
-            else:
-                rotated['X'] = data['X'][indices]
-                rotated['Y'] = data['Y'][indices]
+            # if rotate:
+            #     rotator = preprocess.RotateFlip()
+            #     rotated['X'], rotated['Y'] = rotator.process(
+            #         data['X'][indices], data['Y'][indices])
+            # else:
+            rotated['X'] = data['X'][indices]
+            rotated['Y'] = data['Y'][indices]
 
             # Run the supplied function and accumulate the error
             err, accuracy = func(rotated['X'], rotated['Y'])

@@ -100,10 +100,8 @@ class RotateFlip(ImagePreprocessor):
     def _process_one_image(self, image, coords):
         assert image.shape == (96, 96)
 
-        draw = random.randint(0, 3)
+        draw = random.randint(0, 1)
         if draw == 0:
-            return RotateFlip.__flip(image, coords, "v")
-        elif draw == 1:
             return RotateFlip.__flip(image, coords, "h")
         else:
             return image, coords
