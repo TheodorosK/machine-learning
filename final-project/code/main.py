@@ -266,26 +266,33 @@ def train_main(options):
                                        selected, loss_log, resumer)
         trainer.train(options.num_epochs)
 
-        def write_pred(data, filename):
+        def write_pred(data, filename, header):
             data_frame = pd.DataFrame(data)
             with open(filename, 'w') as file_desc:
-                data_frame.to_csv(file_desc, index=False)
+                data_frame.to_csv(file_desc, 
+                    header=header,
+                    index=False)
 
         if options.amputate:
-            yhat_val = trainer.predict_y(selected['validate']['X'])
-            yhat_train = trainer.predict_y(selected['train']['X'])
-            write_pred(yhat_val, "yhat_val.csv")
-            write_pred(yhat_train, "yhat_train.csv")
+            last_layer_train = trainer.predict_y(selected['train']['X'])
+            last_layer_val = trainer.predict_y(selected['validate']['X'])
+            write_pred(last_layer_train, "last_layer_train.csv", None)
+            write_pred(last_layer_val, "last_layer_val.csv", None)
+            write_pred(selected['train']['Y'], "y_train.csv", 
+                feature_col_labels)
+            write_pred(selected['validate']['Y'], "y_validate.csv", 
+                feature_col_labels)
 
-        # Drop into a console so that we do anything additional we need.
-        if options.drop_to_console:
-            code.interact(local=locals())
 
         #
         # Change back to the run directory for the next run.
         #
         print "Changing to %s" % options.run_data_path
         os.chdir(options.run_data_path)
+
+        # Drop into a console so that we do anything additional we need.
+        if options.drop_to_console:
+            code.interact(local=locals())
 
     # Finally combine all of the loss-functions to produce a loss output.
     start_time = time.time()
