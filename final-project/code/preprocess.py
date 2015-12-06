@@ -12,75 +12,36 @@ import skimage.filters
 class ImagePreprocessor(object):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, placement):
-        self.__merge_fn = {
-            "append": ImagePreprocessor.__append,
-            "replace": ImagePreprocessor.__replace,
-            "add_channel": ImagePreprocessor.__add_channel
-        }[placement]
-
-    @staticmethod
-    def __append(old_images, old_coords, new_images, new_coords):
-        return (np.concatenate((old_images, new_images), axis=0),
-                np.concatenate((old_coords, new_coords), axis=0))
-
-    @staticmethod
-    def __replace(old_images, old_coords, new_images, new_coords):
-        return old_images, old_coords
-
-    @staticmethod
-    def __add_channel(old_images, old_coords, new_images, new_coords):
-        assert len(new_images) == len(old_images)
-        assert len(new_coords) == len(old_coords)
-        return np.concatenate((old_images, new_images), axis=1), old_coords
-
-    @abc.abstractmethod
-    def _process_one_image(self, image, coords, channel_list):
+    def __init__(self):
         pass
 
-    def process(self, all_images, all_coords, channel_list=None):
+    @abc.abstractmethod
+    def _process_one_image(self, image, coords):
+        pass
+
+    def process(self, all_images, all_coords):
         assert len(all_images) == len(all_coords)
+        assert all_images.shape[1] == 1
 
-        if channel_list is None:
-            channel_list = range(all_images.shape[1])
-
-        new_images = np.empty(all_images.shape)
-        new_coords = np.empty(all_coords.shape)
-        idx = 0
+        new_images = np.empty(all_images.shape, dtype=np.float32)
+        new_coords = np.empty(all_coords.shape, dtype=np.float32)
         for i in range(len(all_images)):
             new_image, new_coord = self._process_one_image(
-                all_images[i], all_coords[i], channel_list)
+                all_images[i][0], all_coords[i])
 
-            # Skip updating new_images/new_coords if the processor returned
-            # None for either.
-            if new_image is None or new_coord is None:
-                continue
+            assert new_image is not None and new_coords is not None
 
-            new_images[idx], new_coords[idx] = new_image, new_coord
-            idx += 1
+            new_images[i][0], new_coords[i] = new_image, new_coord
 
         # Merge the new and old images
-        return self.__merge_fn(
-            all_images, all_coords, new_images[0:idx], new_coords[0:idx])
-
-    def process_in_place(self, data, channel_list=None):
-        data['X'], data['Y'] = self.process(data['X'], data['Y'], channel_list)
-
-    def process_partitions_in_place(
-            self, partitions, partition_names=None, channel_list=None):
-        if partition_names is None:
-            partition_names = partitions.keys()
-
-        for partition_name in partition_names:
-            self.process_in_place(partitions[partition_name], channel_list)
+        return new_images, new_coords
 
 
 class RotateFlip(ImagePreprocessor):
     '''Rotates and flips images randomly
     '''
-    def __init__(self, placement):
-        assert placement in ["append", "replace"]
-        super(RotateFlip, self).__init__(placement)
+    def __init__(self):
+        super(RotateFlip, self).__init__()
 
     @staticmethod
     def __split(coords):
@@ -93,7 +54,7 @@ class RotateFlip(ImagePreprocessor):
         return [j for i in zip(x_coords, y_coords) for j in i]
 
     @staticmethod
-    def __flip(image, coords, axis, channel_list):
+    def __flip(image, coords, axis):
         flip_horizontal = {
             "h": True,
             "v": False
@@ -103,21 +64,18 @@ class RotateFlip(ImagePreprocessor):
 
         new_image = image
         if flip_horizontal:
-            for i in channel_list:
-                new_image[i] = np.fliplr(image[i])
             new_image = np.fliplr(image)
             x_coords = image.shape[0] - x_coords
             # y_coords unaffacted
         else:
-            for i in channel_list:
-                new_image[i] = np.flipud(image[i])
+            new_image = np.flipud(image)
             # x_coords unaffected
             y_coords = image.shape[1] - y_coords
 
         return new_image, RotateFlip.__merge(x_coords, y_coords)
 
     @staticmethod
-    def __rotate90(image, coords, direction, channel_list):
+    def __rotate90(image, coords, direction):
         rotate_clockwise = {
             "cw": True,
             "ccw": False
@@ -127,37 +85,46 @@ class RotateFlip(ImagePreprocessor):
 
         new_image = image
         if rotate_clockwise:
-            for i in channel_list:
-                new_image[i] = np.rot90(image[i], 3)
+            new_image = np.rot90(image, 3)
             tmp_x_coords = x_coords
             x_coords = image.shape[0] - y_coords
             y_coords = tmp_x_coords
         else:
-            for i in channel_list:
-                new_image[i] = np.rot90(image[i], 1)
+            new_image = np.rot90(image, 1)
             tmp_y_coords = y_coords
             y_coords = image.shape[1] - x_coords
             x_coords = tmp_y_coords
 
         return new_image, RotateFlip.__merge(x_coords, y_coords)
 
-    def _process_one_image(self, image, coords, channel_list):
-        draw = random.uniform(0, 1)
-        if draw < 1./8.:
-            new_image, new_coord = RotateFlip.__rotate90(
-                image, coords, "cw", channel_list)
-        elif draw >= 1./8. and draw < 1./4.:
-            new_image, new_coord = RotateFlip.__rotate90(
-                image, coords, "ccw", channel_list)
-        elif draw >= 1./4. and draw < 3./8.:
-            new_image, new_coord = RotateFlip.__flip(
-                image, coords, "h", channel_list)
-        elif draw >= 3./8. and draw < 1./2.:
-            new_image, new_coord = RotateFlip.__flip(
-                image, coords, "v", channel_list)
+    def _process_one_image(self, image, coords):
+        assert image.shape == (96, 96)
+
+        draw = random.randint(0, 3)
+        if draw == 0:
+            return RotateFlip.__flip(image, coords, "v")
+        elif draw == 1:
+            return RotateFlip.__flip(image, coords, "h")
         else:
-            return None, None
-        return new_image, new_coord
+            return image, coords
+
+        # draw = random.uniform(0, 1)
+        # if draw < 1./8.:
+        #     new_image, new_coords = RotateFlip.__rotate90(
+        #         image, coords, "cw")
+        # elif draw >= 1./8. and draw < 1./4.:
+        #     new_image, new_coords = RotateFlip.__rotate90(
+        #         image, coords, "ccw")
+        # elif draw >= 1./4. and draw < 3./8.:
+        #     new_image, new_coords = RotateFlip.__flip(
+        #         image, coords, "h")
+        # elif draw >= 3./8. and draw < 1./2.:
+        #     new_image, new_coords = RotateFlip.__flip(
+        #         image, coords, "v")
+        # else:
+        #     new_image = image
+        #     new_coords = coords
+        # return new_image, new_coords
 
 
 class ContrastEnhancer(ImagePreprocessor):
@@ -204,6 +171,17 @@ class ContrastEnhancer(ImagePreprocessor):
 #     glob = exposure.equalize_hist(face) * 255
 #     return glob
 
+if __name__ == "__main__":
+    import fileio
+    faces = fileio.FaceReader(
+        "../data/training.csv", "../data/training.pkl.gz",
+        fast_nrows=10)
+    data = faces.load_file()
+    rf = RotateFlip()
+    res_X, res_Y = rf.process(data['X'][0:1], data['Y'][0:1])
+
+    import code
+    code.interact(local=locals())
 
 
 

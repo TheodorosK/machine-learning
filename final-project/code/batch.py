@@ -9,6 +9,8 @@ import time
 
 import numpy as np
 
+import preprocess
+
 
 class TrainingResumer(object):
     '''Helper class to resume training
@@ -101,19 +103,41 @@ class BatchedTrainer(object):
             yield indices[start_idx: start_idx + batchsize]
 
     @staticmethod
-    def __run_batches(data, batchsize, func, shuffle=False):
+    def __run_batches(data, batchsize, func, shuffle=False, rotate=False):
+        # Initialize some accumulator variables
         accum_err = 0
         accum_accuracy = 0
         batch_cnt = 0
+
+        # Write out the number of batches that will be run for the user.
         sys.stdout.write('[{}]'.format(len(data['X'])/batchsize))
         for indices in BatchedTrainer.__iterate(data, batchsize, shuffle):
-            err, accuracy = func(data['X'][indices], data['Y'][indices])
+            # Rotate the images if called with rotate enabled
+            rotated = {}
+            if rotate:
+                rotator = preprocess.RotateFlip()
+                rotated['X'], rotated['Y'] = rotator.process(
+                    data['X'][indices], data['Y'][indices])
+            else:
+                rotated['X'] = data['X'][indices]
+                rotated['Y'] = data['Y'][indices]
+
+            # Run the supplied function and accumulate the error
+            err, accuracy = func(rotated['X'], rotated['Y'])
             accum_err += err
             accum_accuracy += accuracy
             batch_cnt += 1
+
+            # Write out the breadcrumb for the user.
             sys.stdout.write('.')
             sys.stdout.flush()
+
+        # Part of the breadcrumb
         print "done"
+
+        # The accumulated erorr needs to be scaled down by the number of
+        # batches and the batch-size to be comparable between the training
+        # and validation set (since they're different sized)
         return (accum_err / (batch_cnt * batchsize),
                 accum_accuracy / (batch_cnt * batchsize))
 
@@ -121,12 +145,12 @@ class BatchedTrainer(object):
         sys.stdout.write("  train")
         train_loss, train_rmse = BatchedTrainer.__run_batches(
             self.__dataset['train'], self.__batchsize,
-            self.__mlp.train, shuffle=True)
+            self.__mlp.train, shuffle=True, rotate=True)
 
         sys.stdout.write("  valid")
         valid_loss, _ = BatchedTrainer.__run_batches(
             self.__dataset['validate'], self.__batchsize,
-            self.__mlp.validate, shuffle=False)
+            self.__mlp.validate, shuffle=False, rotate=False)
 
         return (train_loss, train_rmse, np.mean(valid_loss, axis=0))
 

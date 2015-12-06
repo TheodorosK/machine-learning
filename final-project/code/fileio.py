@@ -81,7 +81,7 @@ class FaceReader(DataReader):
                 self.__filename, self.__fast_nrows)
             self._set_xy(FaceReader.__reshape_data(x_values), y_values,
                          None, y_labels)
-            return
+            return self.get_data()
 
         if not os.path.exists(self.__picklefile):
             print "Pickle Doesn't Exist, Loading CSV"
