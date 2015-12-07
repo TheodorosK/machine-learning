@@ -122,7 +122,7 @@ class FancyPerceptron(perceptron.MultiLevelPerceptron):
     @staticmethod
     def fancy_objective(predictions, targets):
         loss = lasagne.objectives.binary_crossentropy(
-            predictions[:, 30:45], targets[:, 30:45]).mean() * 4192.
+            predictions[:, 30:45], targets[:, 30:45]).mean() * 100.
         loss += lasagne.objectives.squared_error(
             predictions[:, 0:30], targets[:, 0:30]).mean()
         return loss
