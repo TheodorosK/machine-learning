@@ -94,6 +94,12 @@ class BatchedTrainer(object):
         self.__logger = logger
         self.__resumer = resumer
 
+        for name in self.__dataset.keys():
+            self.__dataset[name]['Y'] = np.concatenate(
+                (self.__dataset[name]['Y'], self.__dataset[name]['Missing']),
+                axis=1)
+            del self.__dataset[name]['Missing']
+
     @staticmethod
     def __iterate(data, batchsize, shuffle=False):
         indices = np.arange(len(data['X']))
@@ -102,30 +108,26 @@ class BatchedTrainer(object):
         for start_idx in range(0, len(indices) - batchsize + 1, batchsize):
             yield indices[start_idx: start_idx + batchsize]
 
-    @staticmethod
-    def __run_batches(data, batchsize, func, shuffle=False, rotate=False):
+    def __run_batches(self, name, func, shuffle=False):
         # Initialize some accumulator variables
-        accum_err = 0
-        accum_accuracy = 0
+        accum_loss = 0
+        accum_rmse = 0
+        accum_bin_loss = 0
         batch_cnt = 0
 
         # Write out the number of batches that will be run for the user.
-        sys.stdout.write('[{}]'.format(len(data['X'])/batchsize))
-        for indices in BatchedTrainer.__iterate(data, batchsize, shuffle):
-            # Rotate the images if called with rotate enabled
-            rotated = {}
-            # if rotate:
-            #     rotator = preprocess.RotateFlip()
-            #     rotated['X'], rotated['Y'] = rotator.process(
-            #         data['X'][indices], data['Y'][indices])
-            # else:
-            rotated['X'] = data['X'][indices]
-            rotated['Y'] = data['Y'][indices]
+        sys.stdout.write('[{}]'.format(len(
+            self.__dataset[name]['X']) / self.__batchsize))
+        for indices in BatchedTrainer.__iterate(
+                self.__dataset[name], self.__batchsize, shuffle):
 
             # Run the supplied function and accumulate the error
-            err, accuracy = func(rotated['X'], rotated['Y'])
-            accum_err += err
-            accum_accuracy += accuracy
+            loss, rmse, bin_loss = func(
+                self.__dataset[name]['X'][indices],
+                self.__dataset[name]['Y'][indices])
+            accum_loss += loss
+            accum_rmse += rmse
+            accum_bin_loss += bin_loss
             batch_cnt += 1
 
             # Write out the breadcrumb for the user.
@@ -138,21 +140,24 @@ class BatchedTrainer(object):
         # The accumulated erorr needs to be scaled down by the number of
         # batches and the batch-size to be comparable between the training
         # and validation set (since they're different sized)
-        return (accum_err / (batch_cnt * batchsize),
-                accum_accuracy / (batch_cnt * batchsize))
+        return (accum_loss / (batch_cnt * self.__batchsize),
+                accum_rmse / (batch_cnt * self.__batchsize),
+                accum_bin_loss / (batch_cnt * self.__batchsize))
 
     def __train_one_epoch(self):
         sys.stdout.write("  train")
-        train_loss, train_rmse = BatchedTrainer.__run_batches(
-            self.__dataset['train'], self.__batchsize,
-            self.__mlp.train, shuffle=True, rotate=True)
+        train_loss, train_rmse, train_bin_loss = self.__run_batches(
+            'train', self.__mlp.train, shuffle=True)
 
         sys.stdout.write("  valid")
-        valid_loss, _ = BatchedTrainer.__run_batches(
-            self.__dataset['validate'], self.__batchsize,
-            self.__mlp.validate, shuffle=False, rotate=False)
+        _, valid_rmse, valid_bin_loss = self.__run_batches(
+            'validate', self.__mlp.validate, shuffle=False)
 
-        return (train_loss, train_rmse, np.mean(valid_loss, axis=0))
+        return (train_loss,
+                np.mean(train_rmse, axis=0),
+                np.mean(train_bin_loss, axis=0),
+                np.mean(valid_rmse, axis=0),
+                np.mean(valid_bin_loss, axis=0))
 
     def predict_y(self, x_values):
         '''Predict Y values using the current state of the model and X.
@@ -186,13 +191,24 @@ class BatchedTrainer(object):
         for epoch in range(self.__resumer.resume_training(), num_epochs+1):
             start_time = time.time()
             print "Epoch {} of {}".format(epoch, num_epochs)
-            train_loss, train_rmse, valid_rmse = self.__train_one_epoch()
+            (train_loss, train_rmse, train_bin_loss,
+                valid_rmse, valid_bin_loss) = self.__train_one_epoch()
+
             self.__logger.log(
-                np.concatenate(([train_loss, train_rmse], valid_rmse)), epoch)
+                np.concatenate(([train_loss, np.mean(train_rmse),
+                                 np.mean(train_bin_loss)],
+                                valid_rmse, valid_bin_loss)),
+                epoch)
             print "    took {:.3f}s".format(time.time() - start_time)
             print "  training loss:\t\t{:.6f}".format(train_loss)
-            print "  training rmse:\t\t{:.6f}".format(train_rmse)
-            print "  validation rmse:\t\t{:.6f}".format(np.mean(valid_rmse))
+            print "  training rmse:\t\t{:.6f}".format(
+                np.mean(train_rmse))
+            print "  training bin-loss:\t\t{:.6f}".format(
+                np.mean(train_bin_loss))
+            print "  validation rmse:\t\t{:.6f}".format(
+                np.mean(valid_rmse))
+            print "  validation bin-loss:\t\t{:.6f}".format(
+                np.mean(valid_bin_loss))
 
             self.__mlp.epoch_done_tasks(epoch-1, num_epochs)
             self.__resumer.end_epoch(epoch)

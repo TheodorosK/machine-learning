@@ -3,7 +3,7 @@ rm(list=ls())
 require(reshape2)
 require(ggplot2)
 
-PlotLoss <- function(file, rx='^train_rmse') {
+PlotLoss <- function(file, rx='^train_') {
     dat <- read.csv(file)
     loss <- dat[, grep(rx, names(dat))]
     loss <- data.frame(epoch=dat$epoch, loss)

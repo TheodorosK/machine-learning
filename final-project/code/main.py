@@ -6,6 +6,7 @@ import code
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -17,12 +18,11 @@ import pandas as pd
 
 import batch
 import data_logger
+import fancy_perceptron
 import fileio
 import partition
 import perceptron
 import preprocess
-
-ACTION_TRAIN_MISSING = "train_missing"
 
 
 class Tee(object):
@@ -72,11 +72,6 @@ def load_nnet_config(options):
     if options.batchsize is not None:
         nnet_config['batchsize'] = options.batchsize
 
-    if options.action == ACTION_TRAIN_MISSING:
-        nnet_config[perceptron.MultiLevelPerceptron.PREDICT_MISSING] = True
-    else:
-        nnet_config[perceptron.MultiLevelPerceptron.PREDICT_MISSING] = False
-
     return nnet_config
 
 
@@ -89,51 +84,37 @@ def select_data(options, feature_cols, partitioned):
         selected[name] = {}
         selected[name]['X'] = partitioned[name]['X']
         selected[name]['Y'] = partitioned[name]['Y'][:, feature_cols]
-
-    if options.action == ACTION_TRAIN_MISSING:
-        binary = {}
-        for name in selected.keys():
-            binary[name] = {}
-            binary[name]['X'] = selected[name]['X']
-            binary[name]['Y'] = np.empty(
-                selected[name]['Y'].shape, dtype='float32')
-            nans = np.isnan(selected[name]['Y'])
-            binary[name]['Y'][nans] = 1
-            binary[name]['Y'][~nans] = 0
-
-        print "Binarized the Missing Values"
-        assert binary[name]['Y'].shape == selected[name]['Y'].shape
-        return binary
+        missing_shape = list(selected[name]['Y'].shape)
+        missing_shape[1] /= 2
+        selected[name]['Missing'] = np.empty(
+            tuple(missing_shape), dtype='float32')
 
     #
     # Map/Drop NaNs
     #
-    if options.keep_nans:
-        replaced = 0
-        total = 0
-        for name in partitioned.keys():
-            to_replace = np.isnan(selected[name]['Y'])
-            selected[name]['Y'][to_replace] = options.nan_cardinal
+    replaced = 0
+    total = 0
+    for name in partitioned.keys():
+        to_replace = np.isnan(selected[name]['Y'])
+        odd_cols = range(1, len(feature_cols), 2)
+        even_cols = range(0, len(feature_cols), 2)
+        missing = to_replace[:, odd_cols]
+        assert np.all(to_replace[:, odd_cols] == to_replace[:, even_cols])
 
-            replaced += np.sum(to_replace)
-            total += to_replace.size
+        col_means = np.nanmean(selected[name]['Y'], axis=0)
 
-        print "Replaced NaNs with cardinal=%d [%3.1f%% of data]" % (
-            options.nan_cardinal, float(replaced)/float(total)*100.)
-        return selected
-    else:
-        dropped = 0
-        total = 0
-        for name in partitioned.keys():
-            to_keep = ~(np.isnan(selected[name]['Y']).any(1))
-            selected[name]['X'] = selected[name]['X'][to_keep]
-            selected[name]['Y'] = selected[name]['Y'][to_keep]
+        selected[name]['Missing'] = np.float32(missing)
+        for i in range(len(feature_cols)):
+            selected[name]['Y'][:, i][to_replace[:, i]] = col_means[i]
 
-            dropped += sum(~to_keep)
-            total += len(to_keep)
-        print "Dropping samples with NaNs: {:3.1f}% dropped".format(
-            float(dropped)/float(total)*100.)
-        return selected
+        assert np.allclose(np.mean(selected[name]['Y'], axis=0), col_means)
+
+        replaced += np.sum(to_replace)
+        total += to_replace.size
+
+    print "Replaced NaNs with column mean [%3.1f%% of data]" % (
+        float(replaced)/float(total)*100.)
+    return selected
 
 
 def combine_loss_main(options):
@@ -186,7 +167,7 @@ def train_feature(options, selected, nnet_config, feature_info):
         perceptron_type = perceptron.AmputatedMLP
     else:
         print "Chose an Convolutional MLP"
-        perceptron_type = perceptron.ConvolutionalMLP
+        perceptron_type = fancy_perceptron.FancyPerceptron
     mlp = perceptron_type(
         nnet_config, (1, 96, 96), len(feature_info['cols']))
     print mlp
@@ -196,11 +177,19 @@ def train_feature(options, selected, nnet_config, feature_info):
     #
     # Finally, launch the training loop.
     #
+
+    feat_miss_header = [re.sub(r"_[xy]$", "", f) for
+                        f in feature_info['col_labels']]
+    feat_miss_header = ["bin_" + f for (i, f) in enumerate(feat_miss_header)
+                        if i in range(0, len(feat_miss_header), 2)]
+    print feat_miss_header
+
     print "Starting training..."
     loss_log = data_logger.CSVEpochLogger(
         "loss_%05d.csv", "loss.csv",
-        np.concatenate((['train_loss', 'train_rmse'],
-                        feature_info['col_labels'])))
+        np.concatenate((
+            ['train_loss', 'train_coord_rmse', 'train_exist_loss'],
+            feature_info['col_labels'], feat_miss_header)))
     resumer = batch.TrainingResumer(
         mlp, "epochs_done.txt", "state_%05d.pkl.gz",
         options.save_state_interval)
@@ -214,20 +203,20 @@ def train_feature(options, selected, nnet_config, feature_info):
             with open(filename, 'w') as file_desc:
                 data_frame.to_csv(file_desc, header=header, index=False)
 
+        missing = ["pr_missing_"+re.sub(r"_[xy]$", "", f) for (i, f) in
+                   enumerate(feature_info['col_labels']) if i in
+                   range(0, len(feature_info['col_labels']), 2)]
+        header = np.concatenate((feature_info['col_labels'], missing))
+
         last_layer_train = trainer.predict_y(selected['train']['X'])
         last_layer_val = trainer.predict_y(selected['validate']['X'])
-        write_pred(last_layer_train, "last_layer_train.csv", None)
-        write_pred(last_layer_val, "last_layer_val.csv", None)
-        write_pred(selected['train']['Y'], "y_train.csv",
-                   feature_info['col_labels'])
-        write_pred(selected['validate']['Y'], "y_validate.csv",
-                   feature_info['col_labels'])
+        write_pred(last_layer_train, "last_layer_train.csv", header)
+        write_pred(last_layer_val, "last_layer_val.csv", header)
+        write_pred(selected['train']['Y'], "y_train.csv", header)
+        write_pred(selected['validate']['Y'], "y_validate.csv", header)
 
 
 def select_features(options):
-    if options.action == ACTION_TRAIN_MISSING:
-        return {'all_binary': range(30)}
-
     with open(options.feature_group_file) as feature_fd:
         feature_dict = json.load(feature_fd)
 
@@ -345,7 +334,7 @@ def main():
         version=get_version(),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        'action', nargs='?', choices=('train', 'loss', ACTION_TRAIN_MISSING),
+        'action', nargs='?', choices=('train', 'loss'),
         default='train', help="action to perform")
     parser.add_argument(
         '-o', '--output_dir', dest='run_data_path',
@@ -404,13 +393,6 @@ def main():
         '--num_rows', dest='num_rows', type=int, metavar="ROWS",
         default=None,
         help="override to specify number of first rows to use")
-    data_group.add_argument(
-        '--keep_nans', dest='keep_nans', action="store_true",
-        help="option to drop target NaNs instead of mapping to cardinal ")
-    data_group.add_argument(
-        '--nan_cardinal', dest='nan_cardinal', type=int, metavar="VALUE",
-        default=-1,
-        help="cardinal value to use for target NaNs")
 
     argcomplete.autocomplete(parser)
     options = parser.parse_args()
@@ -423,6 +405,7 @@ def main():
         os.mkdir(options.run_data_path)
 
     options.run_data_path = os.path.abspath(options.run_data_path)
+    options.feature_group_file = os.path.abspath(options.feature_group_file)
 
     # pylint: disable=too-many-locals
     # Yes we have a lot of variables, but this is the main function.
@@ -452,7 +435,6 @@ def main():
     {
         'train': train_main,
         'loss': combine_loss_main,
-        ACTION_TRAIN_MISSING: train_main
     }[options.action](options)
 
 
