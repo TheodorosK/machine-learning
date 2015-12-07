@@ -116,14 +116,22 @@ Before looking at the results of the clustering algorithm, we first look at node
   \caption{Cluster and Node Histograms}
 \end{figure}
 
+We examine the largest 4 clusters to see how well a sample of the topics (see \cref{tab:wiki_topics}).  Very roughly, it appears that the topics are clusters as follows:
+\begin{itemize}
+\item \textbf{\#5} Mathematics (Number Theory)
+\item \textbf{\#11} Physics / Politics - This cluster appears to be fairly poorly formed
+\item \textbf{\#19} Chemistry
+\item \textbf{\#20} Telecommunications
+\end{itemize}
 
+While not perfect, it appears as though the random walk clustering algorithm does a decent job finding relationships between articles within the graph network.  While difficult to visualize, \cref{fig:wiki_clust} attempts to show the largest 8 clusters along with a couple of the most connected-topics selected from each.\footnote{This was done in an attempt to separate, spatially, the article labels}
 
-% \begin{figure}[!htb]
-%   \centering
-%   \caption{Visual Representation of the Largest 8 Clusters}
-%   \includegraphics[width=\textwidth]{wiki_clust.pdf}
-%   \label{fig:wiki_clust}
-% \end{figure}
+\begin{figure}[!htb]
+  \centering
+  \caption{Visual Representation of the Largest 8 Clusters}
+  \includegraphics[width=\textwidth]{wiki_clust.pdf}
+  \label{fig:wiki_clust}
+\end{figure}
 
 \input{wiki_topics.tex}
 
