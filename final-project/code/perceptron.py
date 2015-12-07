@@ -17,6 +17,8 @@ class MultiLevelPerceptron:
     All MLP-like classes should inherit from this one to be compatible with
     the batch-processing classes.
     '''
+    PREDICT_MISSING = 'predict_missing'
+
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
@@ -75,7 +77,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
     __LINEARITY_TYPES = {
         'rectify': lasagne.nonlinearities.rectify,
         'tanh': lasagne.nonlinearities.tanh,
-        'leaky_rectify': lasagne.nonlinearities.leaky_rectify
+        'leaky_rectify': lasagne.nonlinearities.leaky_rectify,
+        'sigmoid': lasagne.nonlinearities.sigmoid
     }
 
     # This isn't great, but it's a one-off
@@ -84,6 +87,13 @@ class ConvolutionalMLP(MultiLevelPerceptron):
 
         '''
         super(ConvolutionalMLP, self).__init__()
+        if config[MultiLevelPerceptron.PREDICT_MISSING]:
+            if 'output_nonlinearity' in config:
+                print "Overriding Output %s to Sigmoid for Binary Prediction"
+            else:
+                print "Using Output Sigmoid for Binary Prediction"
+            config['output_nonlinearity'] = "sigmoid"
+
         self.__config = config
         self.__input_shape = (config['batchsize'],) + input_shape
         self.__output_width = output_width
@@ -170,11 +180,16 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             updater.update(epoch, num_epochs)
 
     def build_network(self):
+        if self.__config[MultiLevelPerceptron.PREDICT_MISSING]:
+            print "selecting binary cross entropy"
+            objective = lasagne.objectives.binary_crossentropy
+        else:
+            objective = lasagne.objectives.squared_error
         # The output of the entire network is the prediction, define loss to be
         # the RMSE of the predicted values + optional l1/l2 penalties.
         prediction = lasagne.layers.get_output(self._network)
-        loss = lasagne.objectives.squared_error(prediction, self.__target_var)
-        loss = lasagne.objectives.aggregate(loss, mode='mean')
+        loss = objective(prediction, self.__target_var)
+        loss = lasagne.objectives.aggregate(loss, mode='mean') * 4192
 
         if 'l1' in self.__config and self.__config['l1']:
             print "Enabling L1 Regularization"
@@ -186,10 +201,10 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             loss += lasagne.regularization.regularize_network_params(
                 self._network, lasagne.regularization.l2) * 1e-4
 
-        # Training accuracy is simly the rmse.
+        # Training accuracy is simply the rmse.
         train_prediction = lasagne.layers.get_output(
             self._network, deterministic=True)
-        training_accuracy = lasagne.objectives.squared_error(
+        training_accuracy = objective(
             train_prediction, self.__target_var)
         training_accuracy = lasagne.objectives.aggregate(
             training_accuracy, mode='mean')
@@ -217,10 +232,8 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         # related to dropout layers, etc.).  Again, loss is defined using rmse.
         test_prediction = lasagne.layers.get_output(
             self._network, deterministic=True)
-        test_loss = lasagne.objectives.squared_error(
+        test_loss = objective(
             test_prediction, self.__target_var)
-
-        # test_loss = lasagne.objectives.aggregate(test_loss, mode='mean')
 
         # Create the training and validation functions that we'll use to train
         # the model and validate the results.

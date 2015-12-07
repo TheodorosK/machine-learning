@@ -22,6 +22,8 @@ import partition
 import perceptron
 import preprocess
 
+ACTION_TRAIN_MISSING = "train_missing"
+
 
 class Tee(object):
     '''Tees file descriptors so that writes are made everywhere simultaneously.
@@ -52,6 +54,12 @@ def get_version():
         subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip())
 
 
+def print_partition_shapes(partitions):
+    for k in partitions.keys():
+        print("%20s X.shape=%s, Y.shape=%s" % (
+            k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
+
+
 def load_nnet_config(options):
     '''Load the neural network config file and address overrides
     '''
@@ -64,31 +72,55 @@ def load_nnet_config(options):
     if options.batchsize is not None:
         nnet_config['batchsize'] = options.batchsize
 
+    if options.action == ACTION_TRAIN_MISSING:
+        nnet_config[perceptron.MultiLevelPerceptron.PREDICT_MISSING] = True
+    else:
+        nnet_config[perceptron.MultiLevelPerceptron.PREDICT_MISSING] = False
+
     return nnet_config
 
 
-def select_data(feature_cols, partitioned, keep_nans, nan_cardinal):
+def select_data(options, feature_cols, partitioned):
+    #
+    # Select the columns.
+    #
     selected = {}
     for name in partitioned.keys():
         selected[name] = {}
         selected[name]['X'] = partitioned[name]['X']
         selected[name]['Y'] = partitioned[name]['Y'][:, feature_cols]
 
+    if options.action == ACTION_TRAIN_MISSING:
+        binary = {}
+        for name in selected.keys():
+            binary[name] = {}
+            binary[name]['X'] = selected[name]['X']
+            binary[name]['Y'] = np.empty(
+                selected[name]['Y'].shape, dtype='float32')
+            nans = np.isnan(selected[name]['Y'])
+            binary[name]['Y'][nans] = 1
+            binary[name]['Y'][~nans] = 0
+
+        print "Binarized the Missing Values"
+        assert binary[name]['Y'].shape == selected[name]['Y'].shape
+        return binary
+
     #
     # Map/Drop NaNs
     #
-    if keep_nans:
+    if options.keep_nans:
         replaced = 0
         total = 0
         for name in partitioned.keys():
             to_replace = np.isnan(selected[name]['Y'])
-            selected[name]['Y'][to_replace] = nan_cardinal
+            selected[name]['Y'][to_replace] = options.nan_cardinal
 
             replaced += np.sum(to_replace)
             total += to_replace.size
 
         print "Replaced NaNs with cardinal=%d [%3.1f%% of data]" % (
-            nan_cardinal, float(replaced)/float(total)*100.)
+            options.nan_cardinal, float(replaced)/float(total)*100.)
+        return selected
     else:
         dropped = 0
         total = 0
@@ -101,8 +133,7 @@ def select_data(feature_cols, partitioned, keep_nans, nan_cardinal):
             total += len(to_keep)
         print "Dropping samples with NaNs: {:3.1f}% dropped".format(
             float(dropped)/float(total)*100.)
-
-    return selected
+        return selected
 
 
 def combine_loss_main(options):
@@ -145,6 +176,74 @@ def combine_loss(options, feature_groups):
         aggregated_loss.to_csv(write_fd)
 
 
+def train_feature(options, selected, nnet_config, feature_info):
+    #
+    # Instantiate and Build the Convolutional Multi-Level Perceptron
+    #
+    start_time = time.time()
+    if options.amputate:
+        print "Chose an Amputated MLP"
+        perceptron_type = perceptron.AmputatedMLP
+    else:
+        print "Chose an Convolutional MLP"
+        perceptron_type = perceptron.ConvolutionalMLP
+    mlp = perceptron_type(
+        nnet_config, (1, 96, 96), len(feature_info['cols']))
+    print mlp
+    mlp.build_network()
+    print "Building Network Took {:.3f}s".format(time.time() - start_time)
+
+    #
+    # Finally, launch the training loop.
+    #
+    print "Starting training..."
+    loss_log = data_logger.CSVEpochLogger(
+        "loss_%05d.csv", "loss.csv",
+        np.concatenate((['train_loss', 'train_rmse'],
+                        feature_info['col_labels'])))
+    resumer = batch.TrainingResumer(
+        mlp, "epochs_done.txt", "state_%05d.pkl.gz",
+        options.save_state_interval)
+    trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'],
+                                   selected, loss_log, resumer)
+    trainer.train(options.num_epochs)
+
+    if options.amputate or options.predict:
+        def write_pred(data, filename, header):
+            data_frame = pd.DataFrame(data)
+            with open(filename, 'w') as file_desc:
+                data_frame.to_csv(file_desc, header=header, index=False)
+
+        last_layer_train = trainer.predict_y(selected['train']['X'])
+        last_layer_val = trainer.predict_y(selected['validate']['X'])
+        write_pred(last_layer_train, "last_layer_train.csv", None)
+        write_pred(last_layer_val, "last_layer_val.csv", None)
+        write_pred(selected['train']['Y'], "y_train.csv",
+                   feature_info['col_labels'])
+        write_pred(selected['validate']['Y'], "y_validate.csv",
+                   feature_info['col_labels'])
+
+
+def select_features(options):
+    if options.action == ACTION_TRAIN_MISSING:
+        return {'all_binary': range(30)}
+
+    with open(options.feature_group_file) as feature_fd:
+        feature_dict = json.load(feature_fd)
+
+    if options.feature_groups is None:
+        features_to_train = feature_dict
+    else:
+        if not all(k in feature_dict for k in options.feature_groups):
+            raise KeyError(
+                ("one or more of the following features cannot be found %s" %
+                    options.feature_groups))
+        features_to_train = dict((k, feature_dict[k]) for k in
+                                 options.feature_groups if k in feature_dict)
+
+    return features_to_train
+
+
 def train_main(options):
     '''This loads the data, manipulates it and trains the model, it's the glue
     that does all of the work.
@@ -170,11 +269,6 @@ def train_main(options):
     typed_data['X'] = lasagne.utils.floatX(typed_data['X'])
     typed_data['Y'] = lasagne.utils.floatX(typed_data['Y'])
 
-    def print_partition_shapes(partitions):
-        for k in partitions.keys():
-            print("%20s X.shape=%s, Y.shape=%s" % (
-                k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
-
     start_time = time.time()
     partitioner = partition.Partitioner(
         typed_data, {'train': 70, 'validate': 30},
@@ -190,28 +284,15 @@ def train_main(options):
     #
     # Which features to predict
     #
-    with open(options.feature_group_file) as feature_fd:
-        feature_dict = json.load(feature_fd)
-
-    if options.feature_groups is None:
-        features_to_train = feature_dict
-    else:
-        if not all(k in feature_dict for k in options.feature_groups):
-            raise KeyError(
-                ("one or more of the following features cannot be found %s" %
-                    options.feature_groups))
-        features_to_train = dict((k, feature_dict[k]) for k in
-                                 options.feature_groups if k in feature_dict)
-
-    # Try running the network for each group of features
+    features_to_train = select_features(options)
     for feature_index, (feature_name, feature_cols) in enumerate(sorted(
             features_to_train.items())):
         #
         # Setup environment for training a feature
         #
         print "\n\n%s\nFeature Set %s (%d of %d)\n%s" % (
-            "#" * 80, feature_name, feature_index+1, len(features_to_train),
-            "#" * 80)
+            "#" * 80, feature_name, feature_index+1,
+            len(features_to_train), "#" * 80)
 
         feature_path = os.path.abspath(feature_name)
         print "Changing to %s" % feature_path
@@ -228,61 +309,15 @@ def train_main(options):
             [faces.get_labels()['Y'][i] for i in feature_cols])
         print "Selecting features %s for %s" % (
             feature_col_labels, feature_name)
-        selected = select_data(feature_cols, partitions,
-                               options.keep_nans, options.nan_cardinal)
+        selected = select_data(options, feature_cols, partitions)
         print_partition_shapes(selected)
         print "Selecting Data Took {:.3f}s".format(time.time() - start_time)
 
-        #
-        # Instantiate and Build the Convolutional Multi-Level Perceptron
-        #
-        # batchsize = options.batchsize
-        start_time = time.time()
-        if options.amputate:
-            print "Chose an Amputated MLP"
-            perceptron_type = perceptron.AmputatedMLP
-        else:
-            print "Chose an Convolutional MLP"
-            perceptron_type = perceptron.ConvolutionalMLP
-
-        mlp = perceptron_type(
-            nnet_config, (1, 96, 96), len(feature_cols))
-        print mlp
-        mlp.build_network()
-        print "Building Network Took {:.3f}s".format(time.time() - start_time)
-
-        #
-        # Finally, launch the training loop.
-        #
-        print "Starting training..."
-        loss_log = data_logger.CSVEpochLogger(
-            "loss_%05d.csv", "loss.csv",
-            np.concatenate((['train_loss', 'train_rmse'],
-                            feature_col_labels)))
-        resumer = batch.TrainingResumer(
-            mlp, "epochs_done.txt", "state_%05d.pkl.gz",
-            options.save_state_interval)
-        trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'],
-                                       selected, loss_log, resumer)
-        trainer.train(options.num_epochs)
-
-        def write_pred(data, filename, header):
-            data_frame = pd.DataFrame(data)
-            with open(filename, 'w') as file_desc:
-                data_frame.to_csv(file_desc, 
-                    header=header,
-                    index=False)
-
-        if options.amputate:
-            last_layer_train = trainer.predict_y(selected['train']['X'])
-            last_layer_val = trainer.predict_y(selected['validate']['X'])
-            write_pred(last_layer_train, "last_layer_train.csv", None)
-            write_pred(last_layer_val, "last_layer_val.csv", None)
-            write_pred(selected['train']['Y'], "y_train.csv", 
-                feature_col_labels)
-            write_pred(selected['validate']['Y'], "y_validate.csv", 
-                feature_col_labels)
-
+        feature_info = {
+            'cols': feature_cols,
+            'col_labels': feature_col_labels
+        }
+        train_feature(options, selected, nnet_config, feature_info)
 
         #
         # Change back to the run directory for the next run.
@@ -310,8 +345,8 @@ def main():
         version=get_version(),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        'action', nargs='?', choices=('train', 'loss'), default='train',
-        help="action to perform")
+        'action', nargs='?', choices=('train', 'loss', ACTION_TRAIN_MISSING),
+        default='train', help="action to perform")
     parser.add_argument(
         '-o', '--output_dir', dest='run_data_path',
         metavar="PATH",
@@ -331,6 +366,9 @@ def main():
     parser.add_argument(
         '--amputate', dest='amputate', action="store_true",
         help="train a neural network and save output of penultimate layer")
+    parser.add_argument(
+        '--predict', dest='predict', action="store_true",
+        help="predict output after training")
 
     train_group = parser.add_argument_group(
         "Training Control", "Options for Controlling Training")
@@ -413,7 +451,8 @@ def main():
     # Run the function for the specified action.
     {
         'train': train_main,
-        'loss': combine_loss_main
+        'loss': combine_loss_main,
+        ACTION_TRAIN_MISSING: train_main
     }[options.action](options)
 
 
