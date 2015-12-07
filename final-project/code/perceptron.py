@@ -180,16 +180,17 @@ class ConvolutionalMLP(MultiLevelPerceptron):
             updater.update(epoch, num_epochs)
 
     def build_network(self):
-        if self.__config[MultiLevelPerceptron.PREDICT_MISSING]:
-            print "selecting binary cross entropy"
-            objective = lasagne.objectives.binary_crossentropy
-        else:
-            objective = lasagne.objectives.squared_error
         # The output of the entire network is the prediction, define loss to be
         # the RMSE of the predicted values + optional l1/l2 penalties.
         prediction = lasagne.layers.get_output(self._network)
-        loss = objective(prediction, self.__target_var)
-        loss = lasagne.objectives.aggregate(loss, mode='mean') * 4192
+        if self.__config[MultiLevelPerceptron.PREDICT_MISSING]:
+            print "Selecting binary cross-entropy loss"
+            objective = lasagne.objectives.binary_crossentropy
+            loss = objective(prediction, self.__target_var).mean() * 4092
+        else:
+            print "Selecting squared-error loss"
+            objective = lasagne.objectives.squared_error
+            loss = objective(prediction, self.__target_var).mean()
 
         if 'l1' in self.__config and self.__config['l1']:
             print "Enabling L1 Regularization"
