@@ -24,6 +24,9 @@ University of Chicago Booth School of Business}}
 \subsection{Initial Models}
 \subsection{Individual Feature Models}
 Dropout, l1/l2 regularization, and momentum/learning rate.
+
+Using the advice given in Andrew Ng's paper on regularization \cite{ng2004feature}, by acknowledging the fact that we have a dimensionally large input data-set, we choose to apply L1 regularization.
+
 \subsection{Missing Feature Model}
 Since the data contain many missing features caused by partially obscured images, our resulting model must also predict the presence of features.  To predict this we turn to a slightly modified version with a sigmoid non-linearity on the output layer and the binary cross-entropy loss function defined in \cref{eq:bin_cross}.
 
@@ -54,23 +57,41 @@ For many of the features, the neural network does a good job separating the clas
   \label{fig:logistic_boxplots_mouth}
 \end{figure}
 
-\begin{figure}[!ht]
-  \centering
-  \caption{Boxplots for Missing Nose Feature}
-  \includegraphics[scale=.5]{logistic_boxplots_nose.pdf}
-  \label{fig:logistic_boxplots_nose}
-\end{figure}
+% \begin{figure}[!ht]
+%   \centering
+%   \caption{Boxplots for Missing Nose Feature}
+%   \includegraphics[scale=.5]{logistic_boxplots_nose.pdf}
+%   \label{fig:logistic_boxplots_nose}
+% \end{figure}
 
-With the output trained, we next turn to determining the optimal cutoff.  Using the R package \texttt{OptimalCutpoints} we choose to maximize the accuracy area (Lewis et al. 2008; Greiner 1995, 1996) which is defined in \cref{eq:roc_aa}.
+With the output trained, we next turn to determining the optimal cutoff.  Using the R package \texttt{OptimalCutpoints} we choose to maximize the accuracy area \cite{lewis2008use,greiner1995two,greiner1996two} which is defined in \cref{eq:roc_aa}.
 
 \[\label{eq:roc_aa}
 AA(c)=\frac{TP(c)TN(c)}{(TP(c)+FN(c))(FP(c)+TN(c))}
 \]
 where $TP$ = True Positives, $TN$ = True Negatives, $FN$ = False Negatives, \& $FP$ = False Positives
 
+Looking over our boxplots, we see there are generally two categories of features: those that are missing often and those that are not.  For the ones that are missing often, we have a relatively good separability between the predicted probabilities.  For those that are not, the separately is questionable at best.  Turning to the ROC plot for a feature that is missing quite often, \texttt{Left Eye Inner Corner}, (see \cref{fig:roc_left_eye_inner_corner}) we see there is a lot of area under the ROC curve and the optimal cutoff point of 0.5 seems to put us right on the upper-left edge of the curve.  Next, looking at \texttt{Left Eye Center}, a feature with few missing exemplars, (see \cref{fig:roc_left_eye_center}) we see less area and a clear trade-off between specificity and sensitivity.  Again, a value of 0.5 seems to put us on the upper-left edge of the curve.
+
+It turns out that, given the optimization condition, the best cutoff for all of these features is 0.5 (see \cref{tab:logistic_cutoff_table}\footnote{Note: that the \texttt{Nose Tip} feature is present in all training and validation images.}).  In each of the cases, we end up with quite a large sensitivity and a reasonable specificity.
+
+\begin{figure}[!htb]
+  \centering
+  \caption{ROC Curve for Left Eye Inner Corner}
+  \includegraphics[scale=.5]{roc_left_eye_inner_corner.pdf}
+  \label{fig:roc_left_eye_inner_corner}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \caption{ROC Curve For Left Eye Center Feature}
+  \includegraphics[scale=.5]{roc_left_eye_center.pdf}
+  \label{fig:roc_left_eye_center}
+\end{figure}
 
 
-Show boxplots, ROC curves.
+\input{logistic_cutoff_table.tex}
+
 \subsection{Combined Loss Model}
 Semi-failed attempt to train missing signals and coordinates simultaneously.
 \subsection{Putting It All Together}
@@ -83,6 +104,11 @@ Ranking?
 \begin{enumerate}
 \item Engagement Detection
 \end{enumerate}
+
+\medskip
+
+\bibliographystyle{unsrt}
+\bibliography{citations}
 
 \end{document}
 
