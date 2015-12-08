@@ -139,7 +139,8 @@ def main():
     parser.add_argument(
         '-d', '--dir', dest='in_dir', help="Input Directory", required=True)
     parser.add_argument(
-        'which', nargs="?", choices=["loss", "pred", "all"], default="all")
+        'which', nargs="?", choices=["loss", "pred", "all"], default="all",
+        help="What files to process")
     options = parser.parse_args()
 
     real_main(options)
