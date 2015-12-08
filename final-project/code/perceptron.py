@@ -186,10 +186,11 @@ class ConvolutionalMLP(MultiLevelPerceptron):
         if self.__config[MultiLevelPerceptron.PREDICT_MISSING]:
             print "Selecting binary cross-entropy loss"
             objective = lasagne.objectives.binary_crossentropy
+            loss = objective(prediction, self.__target_var).mean() * 4192.
         else:
             print "Selecting squared-error loss"
             objective = lasagne.objectives.squared_error
-        loss = objective(prediction, self.__target_var).mean()
+            loss = objective(prediction, self.__target_var).mean()
 
         if 'l1' in self.__config and self.__config['l1']:
             print "Enabling L1 Regularization"

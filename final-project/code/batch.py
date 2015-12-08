@@ -97,7 +97,7 @@ class TrainingResumer(object):
 class BatchedTrainer(object):
     '''Performs Batch processing/training using a multi-layer perceptron.
     '''
-    def __init__(self, mlp, batchsize, dataset, logger, resumer, scaler):
+    def __init__(self, mlp, batchsize, dataset, logger, resumer, scaler=None):
         self.__mlp = mlp
         self.__batchsize = batchsize
         self.__dataset = dataset
@@ -211,9 +211,9 @@ class BatchedTrainer(object):
             self.__logger.log(
                 np.concatenate(([train_loss, train_rmse], valid_rmse)), epoch)
             print "    took {:.3f}s".format(time.time() - start_time)
-            print "  training loss:\t\t{:.6f}".format(train_loss)
-            print "  training rmse:\t\t{:.6f}".format(train_rmse)
-            print "  validation rmse:\t\t{:.6f}".format(np.mean(valid_rmse))
+            print "  training loss:\t\t{:.3e}".format(train_loss)
+            print "  training rmse:\t\t{:.3e}".format(train_rmse)
+            print "  validation rmse:\t\t{:.3e}".format(np.mean(valid_rmse))
 
             self.__mlp.epoch_done_tasks(epoch-1, num_epochs)
             self.__resumer.end_epoch(epoch)

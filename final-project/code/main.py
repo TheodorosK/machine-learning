@@ -234,13 +234,13 @@ def train_feature(options, selected, nnet_config, original_data, feature_cols):
     resumer = batch.TrainingResumer(
         mlp, "epochs_done.txt", "state_%05d.pkl.gz",
         options.save_state_interval)
-    if options.action == ACTION_TRAIN_MISSING:
-        in_out_scale = None
-    else:
-        in_out_scale = batch.Scaler(offset=1., scale=48.)
+    # if options.action == ACTION_TRAIN_MISSING:
+    #     in_out_scale = None
+    # else:
+    #     in_out_scale = batch.Scaler(offset=1., scale=48.)
 
     trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'],
-                                   selected, loss_log, resumer, in_out_scale)
+                                   selected, loss_log, resumer)
     trainer.train(options.num_epochs)
 
     if options.amputate or options.predict:
