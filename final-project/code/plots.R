@@ -87,3 +87,26 @@ for (i in 1:length(fgps)) {
           inches=F, add=T)
 }
 PlotDone()
+
+# SUCCESSES AND BIG MISSES ####################################################
+
+img.rmse <- data.frame(index = valid.pred$index, rmse = rep(NA, nrow(valid.pred)))
+img.rmse$rmse <- sapply(1:nrow(valid.pred), function(i) {
+  y <- valid.actual[i,2:31]
+  yhat <- valid.pred[i,2:31]
+  return(sqrt(mean((y-yhat)^2, na.rm=T)))
+})
+
+img.rmse <- img.rmse[order(img.rmse$rmse), ]
+
+i <- 1
+tmp.face <- matrix(im.raw[img.rmse$index[i],], 96, 96)
+image(tmp.face, col = im.col, xaxt='n', yaxt='n')
+tmp.kpx <- valid.pred[valid.pred$index==img.rmse$index[i],]
+points(valid.pred[valid.pred$index==img.rmse$index[i], seq(2, 30, 2)]/96, 
+       (96-valid.pred[valid.pred$index==img.rmse$index[i], seq(3, 31, 2)])/96, 
+       col='red', pch='+')  
+points(valid.actual[valid.actual$index==img.rmse$index[i], seq(2, 30, 2)]/96, 
+       (96-valid.actual[valid.actual$index==img.rmse$index[i], seq(3, 31, 2)])/96, 
+       col='red', pch='o')  
+
