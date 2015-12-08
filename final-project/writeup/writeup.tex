@@ -21,7 +21,20 @@ University of Chicago Booth School of Business}}
 \section{Modelling}
 \subsection{Facial Keypoints Introduction}
 \subsection{Building a Model (Tools \& Software)}
+
+
 \subsection{Initial Models}
+What we tried in a nutshell:
+\begin{enumerate}
+\item 3-level - 1 convolutional, 2 dense
+\item 6-level - 3 convolutional, 3 dense
+\item 6-level with dropout
+\item Batchsize changes - positively correlated with minimum loss-floor.
+\item Varying learning rate/momentum (static, and dynamic \cite{lasagnenesterov})
+\item Wider layers
+\item More/Less Dropout
+\end{enumerate}
+
 \subsection{Individual Feature Models}
 Dropout, l1/l2 regularization, and momentum/learning rate.
 
@@ -107,7 +120,8 @@ Ranking?
 
 \medskip
 
-\bibliographystyle{unsrt}
+\bibliographystyle{IEEEtran}
+% \bibliographystyle{unsrt}
 \bibliography{citations}
 
 \end{document}
