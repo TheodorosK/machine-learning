@@ -90,6 +90,8 @@ class Partitioner(object):
         for k in self.__labels_indices:
             partitioned[k] = {
                 'X': self.__dataset['X'][self.__labels_indices[k]],
-                'Y': self.__dataset['Y'][self.__labels_indices[k]]
+                'Y': self.__dataset['Y'][self.__labels_indices[k]],
+                'Index': self.__labels_indices[k],
+                'Y_Labels': self.__dataset['Y_Labels']
             }
         return partitioned

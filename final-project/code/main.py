@@ -6,6 +6,7 @@ import code
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -56,8 +57,13 @@ def get_version():
 
 def print_partition_shapes(partitions):
     for k in partitions.keys():
-        print("%20s X.shape=%s, Y.shape=%s" % (
-            k, partitions[k]['X'].shape, partitions[k]['Y'].shape))
+        assert len(partitions[k]['X']) == len(partitions[k]['Y'])
+        assert len(partitions[k]['Index']) == len(partitions[k]['X'])
+        assert (list(partitions[k]['Y'].shape)[1] ==
+                len(partitions[k]['Y_Labels']))
+        print("%8s X.shape=%s, Y.shape=%s, indices=%s, labels=%s" % (
+            k, partitions[k]['X'].shape, partitions[k]['Y'].shape,
+            len(partitions[k]['Index']), len(partitions[k]['Y_Labels'])))
 
 
 def load_nnet_config(options):
@@ -80,30 +86,49 @@ def load_nnet_config(options):
     return nnet_config
 
 
-def select_data(options, feature_cols, partitioned):
+def select_data(options, feature_cols, partitioned, keep_all_data=False):
     #
     # Select the columns.
     #
+    if options.action == ACTION_TRAIN_MISSING:
+        binary = {}
+        for name in partitioned.keys():
+            num_vars = len(partitioned[name]['Y_Labels'])
+            odd_stride = range(1, num_vars, 2)
+            even_stride = range(0, num_vars, 2)
+
+            nans = np.isnan(partitioned[name]['Y'])
+            even_cols = nans[:, odd_stride]
+            odd_cols = nans[:, even_stride]
+
+            assert np.array_equal(odd_cols, even_cols)
+            col_names = ([re.sub(r'_[xy]$', "", l) for
+                         l in partitioned[name]['Y_Labels']])
+            even_colnames = [col_names[i] for i in even_stride]
+            odd_colnames = [col_names[i] for i in odd_stride]
+            assert np.array_equal(even_colnames, odd_colnames)
+
+            binary[name] = {
+                'X': partitioned[name]['X'],
+                'Y': even_cols,
+                'Index': partitioned[name]['Index'],
+                'Y_Labels': ['missing_' + c for c in even_colnames]
+            }
+
+        print "Binarized the Missing Values"
+        return binary
+
     selected = {}
     for name in partitioned.keys():
         selected[name] = {}
         selected[name]['X'] = partitioned[name]['X']
         selected[name]['Y'] = partitioned[name]['Y'][:, feature_cols]
+        selected[name]['Y_Labels'] = (
+            [partitioned[name]['Y_Labels'][i] for i in feature_cols])
+        selected[name]['Index'] = partitioned[name]['Index']
 
-    if options.action == ACTION_TRAIN_MISSING:
-        binary = {}
-        for name in selected.keys():
-            binary[name] = {}
-            binary[name]['X'] = selected[name]['X']
-            binary[name]['Y'] = np.empty(
-                selected[name]['Y'].shape, dtype='float32')
-            nans = np.isnan(selected[name]['Y'])
-            binary[name]['Y'][nans] = 1
-            binary[name]['Y'][~nans] = 0
-
-        print "Binarized the Missing Values"
-        assert binary[name]['Y'].shape == selected[name]['Y'].shape
-        return binary
+    if keep_all_data:
+        return selected
 
     #
     # Map/Drop NaNs
@@ -128,6 +153,11 @@ def select_data(options, feature_cols, partitioned):
             to_keep = ~(np.isnan(selected[name]['Y']).any(1))
             selected[name]['X'] = selected[name]['X'][to_keep]
             selected[name]['Y'] = selected[name]['Y'][to_keep]
+            selected[name]['Index'] = (
+                [selected[name]['Index'][i] for (i, keep)
+                    in enumerate(to_keep) if keep])
+
+            assert not np.isnan(selected[name]['Y']).any()
 
             dropped += sum(~to_keep)
             total += len(to_keep)
@@ -176,7 +206,7 @@ def combine_loss(options, feature_groups):
         aggregated_loss.to_csv(write_fd)
 
 
-def train_feature(options, selected, nnet_config, feature_info):
+def train_feature(options, selected, nnet_config, original_data, feature_cols):
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
@@ -188,7 +218,7 @@ def train_feature(options, selected, nnet_config, feature_info):
         print "Chose an Convolutional MLP"
         perceptron_type = perceptron.ConvolutionalMLP
     mlp = perceptron_type(
-        nnet_config, (1, 96, 96), len(feature_info['cols']))
+        nnet_config, (1, 96, 96), len(selected['train']['Y_Labels']))
     print mlp
     mlp.build_network()
     print "Building Network Took {:.3f}s".format(time.time() - start_time)
@@ -200,28 +230,56 @@ def train_feature(options, selected, nnet_config, feature_info):
     loss_log = data_logger.CSVEpochLogger(
         "loss_%05d.csv", "loss.csv",
         np.concatenate((['train_loss', 'train_rmse'],
-                        feature_info['col_labels'])))
+                        selected['train']['Y_Labels'])))
     resumer = batch.TrainingResumer(
         mlp, "epochs_done.txt", "state_%05d.pkl.gz",
         options.save_state_interval)
+    if options.action == ACTION_TRAIN_MISSING:
+        in_out_scale = None
+    else:
+        in_out_scale = batch.Scaler(offset=1., scale=48.)
+
     trainer = batch.BatchedTrainer(mlp, nnet_config['batchsize'],
-                                   selected, loss_log, resumer)
+                                   selected, loss_log, resumer, in_out_scale)
     trainer.train(options.num_epochs)
 
     if options.amputate or options.predict:
         def write_pred(data, filename, header):
-            data_frame = pd.DataFrame(data)
+            data_frame = pd.DataFrame(data, columns=header)
+            data_frame[['index']] = data_frame[['index']].astype(int)
             with open(filename, 'w') as file_desc:
-                data_frame.to_csv(file_desc, header=header, index=False)
+                data_frame.to_csv(file_desc, index=False)
 
-        last_layer_train = trainer.predict_y(selected['train']['X'])
-        last_layer_val = trainer.predict_y(selected['validate']['X'])
-        write_pred(last_layer_train, "last_layer_train.csv", None)
-        write_pred(last_layer_val, "last_layer_val.csv", None)
-        write_pred(selected['train']['Y'], "y_train.csv",
-                   feature_info['col_labels'])
-        write_pred(selected['validate']['Y'], "y_validate.csv",
-                   feature_info['col_labels'])
+        start_time = time.time()
+        print "Saving Predictions"
+
+        prediction_header = np.concatenate(
+            (['index'], selected['validate']['Y_Labels']))
+        last_layer_header = None
+        if not options.amputate:
+            last_layer_header = prediction_header
+
+        index_train = np.transpose([original_data['train']['Index']])
+        index_valid = np.transpose([original_data['validate']['Index']])
+
+        last_layer_train = np.concatenate(
+            (index_train, trainer.predict_y(original_data['train']['X'])),
+            axis=1)
+        last_layer_val = np.concatenate(
+            (index_valid, trainer.predict_y(original_data['validate']['X'])),
+            axis=1)
+        write_pred(last_layer_train, "last_layer_train.csv",
+                   last_layer_header)
+        write_pred(last_layer_val, "last_layer_val.csv",
+                   last_layer_header)
+        all_data = select_data(options, feature_cols, original_data, True)
+        write_pred(np.concatenate(
+                (index_train, all_data['train']['Y']), axis=1),
+            "y_train.csv", prediction_header)
+        write_pred(np.concatenate(
+                (index_valid, all_data['validate']['Y']), axis=1),
+            "y_validate.csv", prediction_header)
+        print "  took {:.3f}s".format(time.time() - start_time)
 
 
 def select_features(options):
@@ -305,19 +363,13 @@ def train_main(options):
         #
         # Select feature columns
         start_time = time.time()
-        feature_col_labels = (
-            [faces.get_labels()['Y'][i] for i in feature_cols])
-        print "Selecting features %s for %s" % (
-            feature_col_labels, feature_name)
+        print "Selecting features %s" % feature_name
         selected = select_data(options, feature_cols, partitions)
+        print selected['train']['Y_Labels']
         print_partition_shapes(selected)
         print "Selecting Data Took {:.3f}s".format(time.time() - start_time)
 
-        feature_info = {
-            'cols': feature_cols,
-            'col_labels': feature_col_labels
-        }
-        train_feature(options, selected, nnet_config, feature_info)
+        train_feature(options, selected, nnet_config, partitions, feature_cols)
 
         #
         # Change back to the run directory for the next run.

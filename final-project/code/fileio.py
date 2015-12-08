@@ -21,10 +21,13 @@ class DataReader:
         self._x_labels = None
         self._y_labels = None
 
-    def _set_xy(self, x_values, y_values, x_labels, y_labels):
+    def _set_xy(self, x_values, y_values, x_indices, y_labels):
+        assert len(x_values) == len(y_values)
+        assert len(x_indices) == len(x_values)
+        assert len(y_labels) == list(y_values.shape)[1]
         self._x_values = x_values
         self._y_values = y_values
-        self._x_labels = x_labels
+        self._x_indices = x_indices
         self._y_labels = y_labels
 
     @abc.abstractmethod
@@ -40,12 +43,12 @@ class DataReader:
     def get_data(self):
         '''Returns the data previously loaded into memory.
         '''
-        return {'X': self._x_values, 'Y': self._y_values}
-
-    def get_labels(self):
-        '''Returns the labels for the values.
-        '''
-        return {'X': self._x_labels, 'Y': self._y_labels}
+        return {
+            'X': self._x_values,
+            'Y': self._y_values,
+            'Index': self._x_indices,
+            'Y_Labels': self._y_labels
+        }
 
 
 class FaceReader(DataReader):
@@ -80,7 +83,7 @@ class FaceReader(DataReader):
             x_values, y_values, y_labels = FaceReader.__read_csv_file(
                 self.__filename, self.__fast_nrows)
             self._set_xy(FaceReader.__reshape_data(x_values), y_values,
-                         None, y_labels)
+                         range(len(x_values)), y_labels)
             return self.get_data()
 
         if not os.path.exists(self.__picklefile):
@@ -105,5 +108,5 @@ class FaceReader(DataReader):
         pickle_fd.close()
 
         self._set_xy(FaceReader.__reshape_data(x_values), y_values,
-                     None, y_labels)
+                     range(len(x_values)), y_labels)
         return self.get_data()

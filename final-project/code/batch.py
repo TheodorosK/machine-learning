@@ -9,7 +9,17 @@ import time
 
 import numpy as np
 
-import preprocess
+
+class Scaler(object):
+    def __init__(self, offset, scale):
+        self.__offset = offset
+        self.__scale = scale
+
+    def scale_input(self, y):
+        return y / self.__scale - self.__offset
+
+    def descale_output(self, y_hat):
+        return (y_hat + self.__offset) * self.__scale
 
 
 class TrainingResumer(object):
@@ -87,12 +97,18 @@ class TrainingResumer(object):
 class BatchedTrainer(object):
     '''Performs Batch processing/training using a multi-layer perceptron.
     '''
-    def __init__(self, mlp, batchsize, dataset, logger, resumer):
+    def __init__(self, mlp, batchsize, dataset, logger, resumer, scaler):
         self.__mlp = mlp
         self.__batchsize = batchsize
         self.__dataset = dataset
         self.__logger = logger
         self.__resumer = resumer
+        self.__scaler = scaler
+
+        if self.__scaler is not None:
+            for name in self.__dataset:
+                self.__dataset[name]['Y'] = self.__scaler.scale_input(
+                    self.__dataset[name]['Y'])
 
     @staticmethod
     def __iterate(data, batchsize, shuffle=False):
@@ -178,7 +194,12 @@ class BatchedTrainer(object):
             else:
                 y_resized = np.append(y_resized, y_pred, axis=0)
         # Only return the non-padded values of Y.
-        return y_resized[0:len(x_values)]
+        y_hat = y_resized[0:len(x_values)]
+
+        if self.__scaler is not None:
+            y_hat = self.__scaler.descale_output(y_hat)
+
+        return y_hat
 
     def train(self, num_epochs):
         '''Train the model over the specified epochs.
