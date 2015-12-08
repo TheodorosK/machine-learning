@@ -1,18 +1,17 @@
-\documentclass[conference]{IEEEtran}
+\documentclass[journal]{IEEEtran}
 
 \input{../../utils/header_final.tex}
 
 \begin{document}
 
-\title{Machine Learning Final Project}
-\author{
-\IEEEauthorblockN{William Clark}
-\IEEEauthorblockA{will.clark@chicagobooth.edu\\
-University of Chicago Booth School of Business}
-\and
-\IEEEauthorblockN{Matthew DeLio}
-\IEEEauthorblockA{mdelio@chicagobooth.edu\\
-University of Chicago Booth School of Business}}
+\title{Facial Keypoints Detection}
+\author{Will Clark and Matthew DeLio\\
+University of Chicago Booth School of Business\\
+\textsf{\{will.clark,mdelio\}@chicagobooth.edu}}
+
+% The paper headers
+\markboth{Machine Learning (BUS 41201) Final Project}
+{Machine Learning (BUS 41204) Final Project}
 
 \maketitle
 
@@ -29,16 +28,26 @@ What we tried in a nutshell:
 \item 3-level - 1 convolutional, 2 dense
 \item 6-level - 3 convolutional, 3 dense
 \item 6-level with dropout
-\item Batchsize changes - positively correlated with minimum loss-floor.
-\item Varying learning rate/momentum (static, and dynamic \cite{lasagnenesterov})
+\item Batch-size changes - size positively correlated with minimum loss-floor.
+\item Varying learning rate/momentum: static, and dynamic (as prescribed by \cite{lasagnenesterov} to balance increasing momentum must decrease learning rate)
 \item Wider layers
 \item More/Less Dropout
+\item Image Preprocessing
+\item Amputated w/RF
 \end{enumerate}
 
 \subsection{Individual Feature Models}
+Should outline how we came up with the idea of training different models for each feature (set of features).
+
+
 Dropout, l1/l2 regularization, and momentum/learning rate.
 
-Using the advice given in Andrew Ng's paper on regularization \cite{ng2004feature}, by acknowledging the fact that we have a dimensionally large input data-set, we choose to apply L1 regularization.
+
+Using the advice given in Andrew Ng's paper on regularization \cite{ng2004feature}, by acknowledging the fact that we have a dimensionally large input data-set, we choose to apply L1 regularization. <Talk about how we do see a more gradual, but smoother drop in the loss function>
+
+Should plot some validation loss (rmse).
+
+Include any citations for the blog we ran across with \cite{dnouri}
 
 \subsection{Missing Feature Model}
 Since the data contain many missing features caused by partially obscured images, our resulting model must also predict the presence of features.  To predict this we turn to a slightly modified version with a sigmoid non-linearity on the output layer and the binary cross-entropy loss function defined in \cref{eq:bin_cross}.
@@ -46,8 +55,9 @@ Since the data contain many missing features caused by partially obscured images
 \[\label{eq:bin_cross}
  L = -target \log(p) - (1 - target) \log(1 - p)
 \]
+where \texttt{target} indicates whether the feature is actually missing ($\in \{0,1\}$) and \texttt{p} is the predicted probability of the feature being missing
 
-For many of the features, the neural network does a good job separating the classes and producing probabilities that make logical sense.  The ones that it doesn't separate well, like \texttt{Left Eye Center}, \texttt{Right Eye Center} and \texttt{Mouth Center Bottom Lip}, have few missing data-point exemplars in the training data (7, 9, 22 respectively out of 4934).
+For many of the features, the neural network does a good job separating the two classes and producing probabilities that make logical sense.  The ones that it doesn't separate well, like \texttt{Left Eye Center}, \texttt{Right Eye Center} and \texttt{Mouth Center Bottom Lip}, have few missing data-point exemplars in the training data (9, 9, and 23 respectively out of 4934 samples).
 
 \begin{figure}[!ht]
   \centering
@@ -56,6 +66,7 @@ For many of the features, the neural network does a good job separating the clas
   \label{fig:logistic_boxplots_eye}
 \end{figure}
 
+% We can probably drop these next two, they don't add much to the discussion...maybe we can just mention they they look identical (throw them in an appendix)
 \begin{figure}[!ht]
   \centering
   \caption{Boxplots for Missing Eyebrow Features}
@@ -108,7 +119,12 @@ It turns out that, given the optimization condition, the best cutoff for all of 
 \subsection{Combined Loss Model}
 Semi-failed attempt to train missing signals and coordinates simultaneously.
 \subsection{Putting It All Together}
-Show examples
+\begin{figure}[!htb]
+  \centering
+  \caption{Average Face with Estimated Keypoints}
+  \includegraphics[scale=.5]{avg_face_rmse.pdf}
+  \label{fig:avg_face_rmse}
+\end{figure}
 
 \section{Kaggle Submission}
 Ranking?
