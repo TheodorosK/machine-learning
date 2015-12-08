@@ -34,7 +34,7 @@ def missing_cols_names():
     return ['missing_' + c for c in selected_cols]
 
 
-def process(in_dir, in_filename, out_filepath):
+def load_candidates(in_dir, in_filename):
     candidate_sources = (
         [d for d in os.listdir(in_dir)
             if os.path.isdir(os.path.join(in_dir, d))])
@@ -53,6 +53,38 @@ def process(in_dir, in_filename, out_filepath):
     print [df.shape for df in frames]
     print "  took {:.3f}s".format(time.time() - start_time)
 
+    return sources, frames
+
+
+def process_loss_main(options):
+    in_dir = options.in_dir
+    in_filename = 'loss.csv'
+    out_filepath = os.path.join(options.in_dir, "combined_loss.csv")
+
+    sources, frames = load_candidates(in_dir, in_filename)
+
+    original_loss_cols = ['train_loss', 'train_rmse']
+    for i, source in enumerate(sorted(sources)):
+        frames[i].rename(
+            columns={c: '_'.join([source, c]) for c in original_loss_cols},
+            inplace=True)
+
+    loss_cols = (['_'.join([s, c]) for s in sorted(sources)
+                  for c in original_loss_cols])
+    all_column_names = np.concatenate(
+        (COORD_COLUMNS, missing_cols_names(), loss_cols))
+
+    start_time = time.time()
+    print "Concatenating Dataframes/Writing Output"
+    result = pd.concat(frames, axis=1)
+    result = result[all_column_names]
+    result.to_csv(out_filepath)
+    print "  took {:.3f}s".format(time.time() - start_time)
+
+
+def process_pred(in_dir, in_filename, out_filepath):
+    _, frames = load_candidates(in_dir, in_filename)
+
     start_time = time.time()
     print "Concatenating Dataframes"
     result = pd.concat(frames, axis=1)
@@ -67,7 +99,7 @@ def process(in_dir, in_filename, out_filepath):
     print "  took {:.3f}s".format(time.time() - start_time)
 
 
-def real_main(options):
+def process_pred_main(options):
     datasources = {
         "valid": {
             "pred": "last_layer_val.csv",
@@ -83,8 +115,22 @@ def real_main(options):
         for type_name, filename in source_dict.items():
             out_file = (
                 "combined_" + "_".join([source_name, type_name]) + '.csv')
-            process(options.in_dir,
-                    filename, os.path.join(options.in_dir, out_file))
+            process_pred(options.in_dir,
+                         filename, os.path.join(options.in_dir, out_file))
+
+
+def real_main(options):
+    if options.which == "loss":
+        process_loss_main(options)
+    elif options.which == "pred":
+        process_pred_main(options)
+        pass
+    elif options.which == "all":
+        process_pred_main(options)
+        process_loss_main(options)
+        pass
+    else:
+        raise IndexError("cannot find task for %s" % options.which)
 
 
 def main():
@@ -92,7 +138,8 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         '-d', '--dir', dest='in_dir', help="Input Directory", required=True)
-
+    parser.add_argument(
+        'which', nargs="?", choices=["loss", "pred", "all"], default="all")
     options = parser.parse_args()
 
     real_main(options)
