@@ -3,7 +3,7 @@ source('../../utils/source_me.R', chdir=T)
 CreateDefaultPlotOpts()
 Global.PlotOpts$Prefix <- "../writeup/"
 
-dir <- 'run_final/all_binary'
+dir <- 'run_e1000_swapaxes/all_binary'
 
 # Feature Names ----
 CapLeading <- function (string){

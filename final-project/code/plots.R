@@ -1,7 +1,7 @@
 rm(list=ls())
 
 source("../../utils/source_me.R", chdir = T)
-CreateDefaultPlotOpts()
+CreateDefaultPlotOpts(WriteToFile = T)
 Global.PlotOpts$Prefix <- "../writeup/"
 
 require(doSNOW)
@@ -27,25 +27,63 @@ im.raw <- LoadCacheTagOrRun(
 dat.raw$Image <- NULL
 im.raw <- do.call(rbind, im.raw)
 
-# Show some random faces ######################################################
+# Define some Image Utilities ----
+RotateImage180 <- function(im) {
+  return(apply(apply(im, 1, rev), 1, rev))
+}
+RotateKP180 <- function(kp) {
+  return(96-kp)
+}
 
+ShowImage <- function(im) {
+  # Shows the image with no axes and squared off.
+  image(im, col=im.col, asp=1, axes=F)
+}
+
+ShowRotatedImage <- function(im) {
+  ShowImage(RotateImage180(im))
+}
+
+TestRotations <- function() {
+  # Makes an "F."  
+  test_image <- matrix(0, 96, 96)
+  # F part.
+  test_image[81:85,11:85] <- 1
+  test_image[11:79,11:15] <- 1
+  test_image[11:79,41:45] <- 1
+  # Dot part.
+  test_image[11:15, 81:85] <- 1
+  par(mfrow=c(1,2), mar=c(0,0,0,0))
+  # A point in the center of the dot.
+  kp_x = 12
+  kp_y = 83
+  ShowImage(test_image)
+  points(kp_x/96, kp_y/96, col='red', pch=19)
+  ShowImage(RotateImage180(test_image))
+  points(RotateKP180(kp_x)/96, RotateKP180(kp_y)/96, col='red', pch=19)
+}
+#TestRotations()
+
+# Show some random faces ######################################################
 set.seed(0x0DedBeef)
 num.faces <- 8
 rand.idx <- sample(1:nrow(dat.raw), num.faces)
 PlotSetup("random_faces")
 par(mfrow=c(2,4), mar = c(0,0,0,0))
 for (i in 1:num.faces) {
-  image(matrix(im.raw[rand.idx[i],], 96, 96), 
-        col = im.col, xaxt='n', yaxt='n')
-  kpx <- dat.raw[rand.idx[i], seq(1, length(avg.kp), 2)]
-  kpy <- dat.raw[rand.idx[i], seq(2, length(avg.kp), 2)]
-  points(kpx/96, kpy/96, col='red', pch='+')
+  kpx <- dat.raw[rand.idx[i], seq(1, ncol(dat.raw), 2)]
+  kpy <- dat.raw[rand.idx[i], seq(2, ncol(dat.raw), 2)]
+
+#   image(matrix(im.raw[rand.idx[i],], 96, 96), asp=1, axes=F, col=im.col)
+#   points(kpx/96, kpy/96, col='red', pch='+')
+  ShowRotatedImage(matrix(im.raw[rand.idx[i],], 96, 96))
+  points(RotateKP180(kpx)/96, RotateKP180(kpy)/96, col='red', pch='+')
 }
 PlotDone()
 
 # Visualize accuracy ##########################################################
 
-run_dir = "run_final"
+run_dir = "run_e1000_swapaxes"
 
 # Average face
 avg.face <- matrix(colMeans(im.raw, na.rm=T), 96, 96)
@@ -91,14 +129,23 @@ fgps <- fromJSON("feature_groups.json")
 
 # Plot
 PlotSetup("avg_face_rmse")
-image(avg.face, col = im.col, xaxt='n', yaxt='n')
+# image(avg.face, col = im.col, xaxt='n', yaxt='n')
+ShowRotatedImage(avg.face)
 for (i in 1:length(fgps)) {
   fn <- unique(gsub("_x|_y", "", names(dat.raw)[fgps[[i]]+1]))
   cat(fn, "\n\n")
-  points(avg.kpx[paste(fn, "x", sep="_")]/96, 
-         avg.kpy[paste(fn, "y", sep="_")]/96, col=pal[i], pch='+')  
-  symbols(avg.kpx[paste(fn, "x", sep="_")]/96, 
-          avg.kpy[paste(fn, "y", sep="_")]/96, 
+#   points(avg.kpx[paste(fn, "x", sep="_")]/96, 
+#          avg.kpy[paste(fn, "y", sep="_")]/96, col=pal[i], pch='+')  
+#   symbols(avg.kpx[paste(fn, "x", sep="_")]/96, 
+#           avg.kpy[paste(fn, "y", sep="_")]/96, 
+#           circles=radius[fn]/96, 
+#           fg=pal[i], bg=pal.light[i],
+#           inches=F, add=T)
+  points(RotateKP180(avg.kpx[paste(fn, "x", sep="_")])/96, 
+         RotateKP180(avg.kpy[paste(fn, "y", sep="_")])/96,
+         col=pal[i], pch='+')  
+  symbols(RotateKP180(avg.kpx[paste(fn, "x", sep="_")])/96, 
+          RotateKP180(avg.kpy[paste(fn, "y", sep="_")])/96, 
           circles=radius[fn]/96, 
           fg=pal[i], bg=pal.light[i],
           inches=F, add=T)
@@ -127,8 +174,9 @@ for (i in 1:6) {
   
   idx <- img.rmse$index[i]
   # Plot face
-  image(matrix(im.raw[idx+1,], 96, 96), 
-        col = im.col, xaxt='n', yaxt='n')
+#   image(matrix(im.raw[idx+1,], 96, 96), 
+#         col = im.col, xaxt='n', yaxt='n')
+  ShowRotatedImage(matrix(im.raw[idx+1,], 96, 96))
   
   # Predicted keypoints
   kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
@@ -138,8 +186,10 @@ for (i in 1:6) {
   kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
   kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
 
-  points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
-  points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
+#   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
+#   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
+  points(RotateKP180(kpx.pred)/96, RotateKP180(kpy.pred)/96, col='red', pch='+')
+  points(RotateKP180(kpx.actual)/96, RotateKP180(kpy.actual)/96, col='green', pch='o')
   
   PlotDone()
 }
@@ -152,8 +202,9 @@ for (i in 1:6) {
   idx <- img.rmse$index[i]
   
   # Plot face
-  image(matrix(im.raw[idx+1,], 96, 96), 
-        col = im.col, xaxt='n', yaxt='n')
+#   image(matrix(im.raw[idx+1,], 96, 96), 
+#         col = im.col, xaxt='n', yaxt='n')
+  ShowRotatedImage(matrix(im.raw[idx+1,], 96, 96))
   
   # Predicted keypoints
   kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
@@ -163,8 +214,10 @@ for (i in 1:6) {
   kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
   kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
   
-  points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
-  points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
+#   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
+#   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
+  points(RotateKP180(kpx.pred)/96, RotateKP180(kpy.pred)/96, col='red', pch='+')
+  points(RotateKP180(kpx.actual)/96, RotateKP180(kpy.actual)/96, col='green', pch='o')
   
   PlotDone()
 }
