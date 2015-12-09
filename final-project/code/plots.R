@@ -22,7 +22,7 @@ dat.raw <- LoadCacheTagOrRun("raw", read.csv, "../data/training.csv",
 im.raw <- LoadCacheTagOrRun(
   "raw_im", sfLapply,
   dat.raw[,"Image"], function(x) {
-    return(rev(as.integer(unlist(strsplit(x, " ")))))
+    return(as.integer(unlist(strsplit(x, " "))))
   })
 dat.raw$Image <- NULL
 im.raw <- do.call(rbind, im.raw)
@@ -35,7 +35,7 @@ avg.face <- matrix(colMeans(im.raw, na.rm=T), 96, 96)
 # Average keypoints
 avg.kp <- colMeans(dat.raw, na.rm=T)
 avg.kpx <- avg.kp[seq(1, length(avg.kp), 2)]
-avg.kpy <- 96-avg.kp[seq(2, length(avg.kp), 2)]
+avg.kpy <- avg.kp[seq(2, length(avg.kp), 2)]
 
 features <- unique(gsub("_x|_y", "", names(dat.raw)))
 feature.groups <- c("eyebrow", "eye_center", "eye_corner", "mouth_ex_bottom", 
@@ -110,16 +110,16 @@ for (i in 1:6) {
   idx <- img.rmse$index[i]
   print(idx)
   # Plot face
-  image(matrix(im.raw[idx+1,], 96, 96), 
+  image(matrix(im.raw[idx,], 96, 96), 
         col = im.col, xaxt='n', yaxt='n')
   
   # Predicted keypoints
   kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
-  kpy.pred <- 96-valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
+  kpy.pred <- valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
   
   # Actual keypoints
   kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
-  kpy.actual <- 96-valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
+  kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
 
   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
@@ -135,16 +135,16 @@ for (i in 1:6) {
   idx <- img.rmse$index[i]
   
   # Plot face
-  image(matrix(im.raw[idx+1,], 96, 96), 
+  image(matrix(im.raw[idx,], 96, 96), 
         col = im.col, xaxt='n', yaxt='n')
   
   # Predicted keypoints
   kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
-  kpy.pred <- 96-valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
+  kpy.pred <- valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
   
   # Actual keypoints
   kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
-  kpy.actual <- 96-valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
+  kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
   
   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
@@ -153,11 +153,13 @@ for (i in 1:6) {
 }
 
 # Look for off-by-one
-
-test.idx <- 100
-test.row <- as.matrix(valid.actual[test.idx, 2:31])
-diff <- sapply(1:nrow(dat.raw), function(r) {
-  return(sum(abs(as.matrix(dat.raw[r,]) - test.row), na.rm=T))
-})
-which.min(diff)
-valid.actual$index[test.idx]+1
+# 
+# test.idx <- 100
+# test.row <- as.matrix(valid.actual[test.idx, 2:31])
+# diff <- sapply(1:nrow(dat.raw), function(r) {
+#   return(sum(abs(as.matrix(dat.raw[r,]) - test.row), na.rm=T))
+# })
+# which.min(diff)-1
+# valid.actual$index[test.idx]
+# 
+# 
