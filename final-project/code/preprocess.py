@@ -37,6 +37,84 @@ class ImagePreprocessor(object):
         return new_images, new_coords
 
 
+class Rotate():
+    '''Rotates and flips images randomly
+    '''
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def __split(coords):
+        x_coords = coords[0:len(coords):2]
+        y_coords = coords[1:len(coords):2]
+        return x_coords, y_coords
+
+    @staticmethod
+    def __merge(x_coords, y_coords):
+        return [j for i in zip(x_coords, y_coords) for j in i]
+
+    def process_one_image(self, image, coords, amount):
+        x_coords, y_coords = Rotate.__split(coords)
+
+        new_image = image
+        if amount == 90:
+            new_image = np.rot90(image, 3)
+            tmp_x_coords = x_coords
+            x_coords = image.shape[0] - y_coords
+            y_coords = tmp_x_coords
+        elif amount == 180:
+            new_image = np.rot90(image, 2)
+            x_coords = image.shape[0] - x_coords
+            y_coords = image.shape[1] - y_coords
+        elif amount == 270:
+            new_image = np.rot90(image, 1)
+            tmp_y_coords = y_coords
+            y_coords = image.shape[1] - x_coords
+            x_coords = tmp_y_coords
+        else:
+            raise NotImplementedError
+
+        return new_image, Rotate.__merge(x_coords, y_coords)
+
+    def process(self, all_images, all_coords, amount):
+        assert len(all_images) == len(all_coords)
+        assert all_images.shape[1] == 1
+
+        new_images = np.empty(all_images.shape, dtype=np.float32)
+        new_coords = np.empty(all_coords.shape, dtype=np.float32)
+        for i in range(len(all_images)):
+            new_image, new_coord = self.process_one_image(
+                all_images[i][0], all_coords[i], amount)
+
+            assert new_image is not None and new_coords is not None
+
+            new_images[i][0], new_coords[i] = new_image, new_coord
+
+        # Merge the new and old images
+        return new_images, new_coords
+
+    def do_rotations_append(self, data, rotations=[90, 180, 270]):
+        old_images = data['X']
+        old_coords = data['Y']
+        old_indices = data['Index']
+
+        new_images = old_images
+        new_coords = old_coords
+        new_indices = old_indices
+        for r in rotations:
+            new_im_batch, new_co_batch = self.process(
+                old_images, old_coords, r)
+            new_images = np.concatenate((new_images, new_im_batch), 0)
+            new_coords = np.concatenate((new_coords, new_co_batch), 0)
+            new_indices = np.concatenate((new_indices, old_indices))
+        return {
+            'X': new_images,
+            'Y': new_coords,
+            'Index': new_indices,
+            'Y_Labels': data['Y_Labels']
+        }
+
+
 class RotateFlip(ImagePreprocessor):
     '''Rotates and flips images randomly
     '''

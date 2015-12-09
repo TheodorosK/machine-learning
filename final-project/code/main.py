@@ -223,6 +223,16 @@ def train_feature(options, selected, nnet_config, original_data, feature_cols):
     mlp.build_network()
     print "Building Network Took {:.3f}s".format(time.time() - start_time)
 
+    # rotate selected['train']
+    rotator = preprocess.Rotate()
+    rotated = rotator.do_rotations_append(selected['train'])
+
+    augmented = selected
+    augmented['train'] = rotated
+
+    print_partition_shapes(selected)
+    print_partition_shapes(augmented)
+    selected = augmented
     #
     # Finally, launch the training loop.
     #
