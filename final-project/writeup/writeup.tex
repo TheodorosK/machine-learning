@@ -149,11 +149,29 @@ Semi-failed attempt to train missing signals and coordinates simultaneously.
 
 \subsection{Putting It All Together}
 
+In \cref{fig:avg_face_rmse}, we show an ``average'' face, i.e., one that is a composite of all images in our data set. On the image is the average location of each keypoint (marked with a ``+'' sign), and the shaded circles show the average deviation of the predicted keypoints from the actual keypoints. Colors correspond to the model used for each set of keypoints (i.e. eye corners were all predicted with one model, so they are all depicted in yellow).
+
+We can consider the accuracy of our model in two different ways: (1) the RMSE of each keypoint coordinate, or (2) the Euclidean distance of the predicted keypoint $(x,y)$ coordinate from the actual $(x,y)$ coordinate (the latter are represented by the circles in \cref{fig:avg_face_rmse}. 
+
 \begin{figure}[!htb]
   \centering
   \caption{Average Face with Estimated Keypoints}
   \includegraphics[scale=.5]{avg_face_rmse.pdf}
   \label{fig:avg_face_rmse}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \caption{Most Accurate Predictions (Average RMSE = 1.768764)}
+  \includegraphics[scale=.6]{best_faces.pdf}
+  \label{fig:best_faces}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \caption{Least Accurate Predictions (Average RMSE = 7.874467)}
+  \includegraphics[scale=.6]{worst_faces.pdf}
+  \label{fig:worst_faces}
 \end{figure}
 
 \section{Kaggle Submission}
