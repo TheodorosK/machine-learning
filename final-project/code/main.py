@@ -330,8 +330,6 @@ def train_main(options):
     for i in range(typed_data['X'].shape[0]):
         typed_data['X'][i][0] = np.swapaxes(typed_data['X'][i][0], 0, 1)
 
-    code.interact(local=locals())
-
     start_time = time.time()
     partitioner = partition.Partitioner(
         typed_data, {'train': 70, 'validate': 30},
