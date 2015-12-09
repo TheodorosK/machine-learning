@@ -27,7 +27,25 @@ im.raw <- LoadCacheTagOrRun(
 dat.raw$Image <- NULL
 im.raw <- do.call(rbind, im.raw)
 
-# Visualize ###################################################################
+# Show some random faces ######################################################
+
+set.seed(0x0DedBeef)
+num.faces <- 8
+rand.idx <- sample(1:nrow(dat.raw), num.faces)
+PlotSetup("random_faces")
+par(mfrow=c(2,4), mar = c(0,0,0,0))
+for (i in 1:num.faces) {
+  image(matrix(im.raw[rand.idx[i],], 96, 96), 
+        col = im.col, xaxt='n', yaxt='n')
+  kpx <- dat.raw[rand.idx[i], seq(1, length(avg.kp), 2)]
+  kpy <- dat.raw[rand.idx[i], seq(2, length(avg.kp), 2)]
+  points(kpx/96, kpy/96, col='red', pch='+')
+}
+PlotDone()
+
+# Visualize accuracy ##########################################################
+
+run_dir = "run_final"
 
 # Average face
 avg.face <- matrix(colMeans(im.raw, na.rm=T), 96, 96)
@@ -41,8 +59,8 @@ features <- unique(gsub("_x|_y", "", names(dat.raw)))
 feature.groups <- c("eyebrow", "eye_center", "eye_corner", "mouth_ex_bottom", 
                     "mouth_inc_bottom", "nose")
 
-valid.pred <- read.csv("run_final/combined_valid_pred.csv")
-valid.actual <- read.csv("run_final/combined_valid_actual.csv")
+valid.pred <- read.csv(paste(run_dir, "combined_valid_pred.csv", sep="/"))
+valid.actual <- read.csv(paste(run_dir, "combined_valid_actual.csv", sep="/"))
 
 rmse <- sapply(names(dat.raw), function(f) {
   idx.pred <- (valid.pred[, paste("missing", gsub("_x|_y", "", f), sep="_")] < 0.5) &
@@ -108,9 +126,8 @@ for (i in 1:6) {
   PlotSetup(paste("good_face", i, sep=""))
   
   idx <- img.rmse$index[i]
-  print(idx)
   # Plot face
-  image(matrix(im.raw[idx,], 96, 96), 
+  image(matrix(im.raw[idx+1,], 96, 96), 
         col = im.col, xaxt='n', yaxt='n')
   
   # Predicted keypoints
@@ -135,7 +152,7 @@ for (i in 1:6) {
   idx <- img.rmse$index[i]
   
   # Plot face
-  image(matrix(im.raw[idx,], 96, 96), 
+  image(matrix(im.raw[idx+1,], 96, 96), 
         col = im.col, xaxt='n', yaxt='n')
   
   # Predicted keypoints
