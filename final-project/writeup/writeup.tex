@@ -30,10 +30,25 @@ The goal of this paper is to predict the $(x,y)$ coordinates of 15 facial keypoi
 \item Mouth left and right corner (2)
 \item Mouth top and bottom lip center (2)
 \end{itemize}
-A random sample of images and the associated keypoints are shown for reference in ?????.
+A random sample of images and the associated keypoints are shown for reference in \cref{fig:random_faces}. Note that of the displayed faces, only two have the full set of keypoints plotted. This is a feature of the data, namely, that most faces are missing at least multiple keypoints. Accordingly, we predict two values for each keypoint: (1) whether it is present in an image or not, and (2) what its $(x,y)$ coordinates would be if it were present.
+
+There are 7049 images in the testing set provided by Kaggle. We subset the data so that 70 percent of images are for training a model and the other 30 percent are for validation. There is also a true test set of 1783 images for which we only have the image data but not the keypoint data. This is the set on which the Kaggle contest is judged.
+
+The criterion for model accuracy (and evaluation in the Kaggle contest) is the root means square error of all keypoint coordinates:
+\[ \text{RMSE}=\sqrt{\frac{1}{n} \sum_{i=1}^{n} \left( y_i - \hat{y}_i\right)^2} \]
+
+\begin{figure}[!ht]
+  \centering
+  \caption{Random Sub-Sample of Faces and Keypoints}
+  \includegraphics[scale=.6]{random_faces.pdf}
+  \label{fig:random_faces}
+\end{figure}
 
 \subsection{Building a Model (Tools \& Software)}
 
+The main tool we use in this paper is a multilayer convolutional neural network. We built and trained the model in Python using the Theano and Lasagne libraries.\footnote{Lasagne is "a lightweight library to build and train neural networks in Theano." See \url{https://github.com/Lasagne/Lasagne} for details.} One advantage of this technology stack is that computation can be carried out on a graphics card (GPU) which can significantly improve calculation speed.
+
+To take advantage of Theano's GPU capability, we set up our computing environment using a g2.2xlarge EC2 instance from Amazon Web Services. Doing so gave us access to an NVIDIA GPUs with 1536 CUDA cores that performed the bulk of the calculation. In our case, the performance improvement from utilizing the g2.2xlarge instance (compared to running locally) was approximately 40x.
 
 \subsection{Initial Models}
 What we tried in a nutshell:
@@ -131,7 +146,9 @@ It turns out that, given the optimization condition, the best cutoff for all of 
 
 \subsection{Combined Loss Model}
 Semi-failed attempt to train missing signals and coordinates simultaneously.
+
 \subsection{Putting It All Together}
+
 \begin{figure}[!htb]
   \centering
   \caption{Average Face with Estimated Keypoints}
