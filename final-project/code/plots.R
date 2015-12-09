@@ -69,7 +69,6 @@ pal.light <- add.alpha(pal, alpha=0.2)
 
 # Get feature groups
 require(jsonlite)
-feature_groups.json
 fgps <- fromJSON("feature_groups.json")
 
 # Plot
@@ -88,7 +87,7 @@ for (i in 1:length(fgps)) {
 }
 PlotDone()
 
-# SUCCESSES AND BIG MISSES ####################################################
+# GOOD AND BAD PREDICTIONS ####################################################
 
 img.rmse <- data.frame(index = valid.pred$index, rmse = rep(NA, nrow(valid.pred)))
 img.rmse$rmse <- sapply(1:nrow(valid.pred), function(i) {
@@ -97,16 +96,68 @@ img.rmse$rmse <- sapply(1:nrow(valid.pred), function(i) {
   return(sqrt(mean((y-yhat)^2, na.rm=T)))
 })
 
+# Restrict to only images where all keypoints are actually there
+allthere.idx <- valid.actual$index[rowSums(
+  valid.actual[, grep("missing", names(valid.actual))]
+) == 0]
+img.rmse <- img.rmse[img.rmse$index %in% allthere.idx,]
+
+# Order from most to least accurate
 img.rmse <- img.rmse[order(img.rmse$rmse), ]
+for (i in 1:6) {
+  PlotSetup(paste("good_face", i, sep=""))
+  
+  idx <- img.rmse$index[i]
+  print(idx)
+  # Plot face
+  image(matrix(im.raw[idx+1,], 96, 96), 
+        col = im.col, xaxt='n', yaxt='n')
+  
+  # Predicted keypoints
+  kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
+  kpy.pred <- 96-valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
+  
+  # Actual keypoints
+  kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
+  kpy.actual <- 96-valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
 
-i <- 1
-tmp.face <- matrix(im.raw[img.rmse$index[i],], 96, 96)
-image(tmp.face, col = im.col, xaxt='n', yaxt='n')
-tmp.kpx <- valid.pred[valid.pred$index==img.rmse$index[i],]
-points(valid.pred[valid.pred$index==img.rmse$index[i], seq(2, 30, 2)]/96, 
-       (96-valid.pred[valid.pred$index==img.rmse$index[i], seq(3, 31, 2)])/96, 
-       col='red', pch='+')  
-points(valid.actual[valid.actual$index==img.rmse$index[i], seq(2, 30, 2)]/96, 
-       (96-valid.actual[valid.actual$index==img.rmse$index[i], seq(3, 31, 2)])/96, 
-       col='red', pch='o')  
+  points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
+  points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
+  
+  PlotDone()
+}
 
+# Order from least to most accurate
+img.rmse <- img.rmse[order(img.rmse$rmse, decreasing = T), ]
+for (i in 1:6) {
+  PlotSetup(paste("bad_face", i, sep=""))
+  
+  idx <- img.rmse$index[i]
+  
+  # Plot face
+  image(matrix(im.raw[idx+1,], 96, 96), 
+        col = im.col, xaxt='n', yaxt='n')
+  
+  # Predicted keypoints
+  kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
+  kpy.pred <- 96-valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
+  
+  # Actual keypoints
+  kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
+  kpy.actual <- 96-valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
+  
+  points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
+  points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
+  
+  PlotDone()
+}
+
+# Look for off-by-one
+
+test.idx <- 100
+test.row <- as.matrix(valid.actual[test.idx, 2:31])
+diff <- sapply(1:nrow(dat.raw), function(r) {
+  return(sum(abs(as.matrix(dat.raw[r,]) - test.row), na.rm=T))
+})
+which.min(diff)
+valid.actual$index[test.idx]+1
