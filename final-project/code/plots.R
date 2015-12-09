@@ -66,10 +66,10 @@ TestRotations <- function() {
 
 # Show some random faces ######################################################
 set.seed(0x0DedBeef)
-num.faces <- 8
+num.faces <- 6
 rand.idx <- sample(1:nrow(dat.raw), num.faces)
 PlotSetup("random_faces")
-par(mfrow=c(2,4), mar = c(0,0,0,0))
+par(mfrow=c(2,3), mar = c(0,0,0,0))
 for (i in 1:num.faces) {
   kpx <- dat.raw[rand.idx[i], seq(1, ncol(dat.raw), 2)]
   kpy <- dat.raw[rand.idx[i], seq(2, ncol(dat.raw), 2)]
@@ -167,60 +167,41 @@ allthere.idx <- valid.actual$index[rowSums(
 ) == 0]
 img.rmse <- img.rmse[img.rmse$index %in% allthere.idx,]
 
+PlotFaces <- function(indices) {
+  for (idx in indices) {
+    # Plot face
+    #   image(matrix(im.raw[idx+1,], 96, 96), 
+    #         col = im.col, xaxt='n', yaxt='n')
+    ShowRotatedImage(matrix(im.raw[idx+1,], 96, 96))
+    
+    # Predicted keypoints
+    kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
+    kpy.pred <- valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
+    
+    # Actual keypoints
+    kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
+    kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
+    
+    #   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
+    #   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
+    points(RotateKP180(kpx.pred)/96, RotateKP180(kpy.pred)/96, col='red', pch='+')
+    points(RotateKP180(kpx.actual)/96, RotateKP180(kpy.actual)/96, col='green', pch='o')
+  }
+}
+
 # Order from most to least accurate
 img.rmse <- img.rmse[order(img.rmse$rmse), ]
-for (i in 1:6) {
-  PlotSetup(paste("good_face", i, sep=""))
-  
-  idx <- img.rmse$index[i]
-  # Plot face
-#   image(matrix(im.raw[idx+1,], 96, 96), 
-#         col = im.col, xaxt='n', yaxt='n')
-  ShowRotatedImage(matrix(im.raw[idx+1,], 96, 96))
-  
-  # Predicted keypoints
-  kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
-  kpy.pred <- valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
-  
-  # Actual keypoints
-  kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
-  kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
-
-#   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
-#   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
-  points(RotateKP180(kpx.pred)/96, RotateKP180(kpy.pred)/96, col='red', pch='+')
-  points(RotateKP180(kpx.actual)/96, RotateKP180(kpy.actual)/96, col='green', pch='o')
-  
-  PlotDone()
-}
+PlotSetup("best_faces")
+par(mfrow=c(2, 3), mar=rep_len(0, 4))
+PlotFaces(img.rmse$index[1:6])
+PlotDone()
 
 # Order from least to most accurate
 img.rmse <- img.rmse[order(img.rmse$rmse, decreasing = T), ]
-for (i in 1:6) {
-  PlotSetup(paste("bad_face", i, sep=""))
-  
-  idx <- img.rmse$index[i]
-  
-  # Plot face
-#   image(matrix(im.raw[idx+1,], 96, 96), 
-#         col = im.col, xaxt='n', yaxt='n')
-  ShowRotatedImage(matrix(im.raw[idx+1,], 96, 96))
-  
-  # Predicted keypoints
-  kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
-  kpy.pred <- valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
-  
-  # Actual keypoints
-  kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
-  kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
-  
-#   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
-#   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
-  points(RotateKP180(kpx.pred)/96, RotateKP180(kpy.pred)/96, col='red', pch='+')
-  points(RotateKP180(kpx.actual)/96, RotateKP180(kpy.actual)/96, col='green', pch='o')
-  
-  PlotDone()
-}
+PlotSetup("worst_faces")
+par(mfrow=c(2, 3), mar=rep_len(0, 4))
+PlotFaces(img.rmse$index[1:6])
+PlotDone()
 
 # Look for off-by-one
 # 
