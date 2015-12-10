@@ -19,7 +19,7 @@ University of Chicago Booth School of Business\\
 
 \section{Modelling}
 
-\subsection{Facial Keypoints Introduction}
+\subsection{Facial Keypoints Introduction}\label{intro}
 
 The goal of this paper is to predict the $(x,y)$ coordinates of 15 facial keypoints for a given set of 96-by-96 grayscale images. The keypoints are:
 \begin{itemize}
@@ -50,6 +50,25 @@ The main tool we use in this paper is a multilayer convolutional neural network.
 
 To take advantage of Theano's GPU capability, we set up our computing environment using a g2.2xlarge EC2 instance from Amazon Web Services. Doing so gave us access to an NVIDIA GPUs with 1536 CUDA cores that performed the bulk of the calculation. In our case, the performance improvement from utilizing the g2.2xlarge instance (compared to running locally) was approximately 40x.
 
+\subsection{Feature Groups}
+
+As discussed in \cref{intro}, most images do not contain all keypoints, which presents a problem when we are trying to train our model. One naive solution would be to throw out all faces without all keypoints, but doing so would remove 4909 images from our training data set (out of 7049 total images)--about 70 percent of our data.
+
+An important observation is that keypoints tend to be missing in groups, so that (as an example) if an image does not have one of the eyebrow keypoints, it tends to also not have all other eyebrow keypoints. Accordingly, we bundle the keypoints into the following groups (the number of images containing all keypoints in the group are reported in parentheses):
+\begin{itemize}
+\item eye center: left eye center, right eye center (7033)
+\item eye corner: left eye inner corner, left eye outer corner, right eye inner corner, right eye outer corner (2247)
+\item eyebrow: left eyebrow inner end, left eyebrow outer end, right eyebrow inner end, right eyebrow outer end (2190)
+\item mouth (bottom): mouth center bottom lip (7016)
+\item mouth (excl. bottom): mouth left corner, mouth right corner, mouth center top lip (2260)
+\item nose: nose tip (7049)
+\end{itemize}
+For each feature, then, we can group it with other features that tend to be present in the same image. Within a group, we throw out images in which all keypoints \textit{in that group} are not present, but in 22 out of 30 cases this requires us to remove less than 1 percent of the available images (in the other 8 cases, we throw out between 1 and 4 percent of available images).
+
+Splitting the features into groups like this requires that we train six models, but each model will have more available training data than a single model required to predict all features. 
+
+A related point is that we will also need to predict whether or not a keypoint is contained in a feature, so that we can predict an empty value for keypoints that are likely to be missing in the test set. We discuss this model more fully in \cref{missing}.
+
 \subsection{Initial Models}
 What we tried in a nutshell:
 \begin{enumerate}
@@ -64,10 +83,6 @@ What we tried in a nutshell:
 \item Amputated w/RF
 \end{enumerate}
 
-\subsection{Individual Feature Models}
-Should outline how we came up with the idea of training different models for each feature (set of features).
-
-
 Dropout, l1/l2 regularization, and momentum/learning rate.
 
 
@@ -77,7 +92,7 @@ Should plot some validation loss (rmse).
 
 Include any citations for the blog we ran across with \cite{dnouri}
 
-\subsection{Missing Feature Model}
+\subsection{Missing Feature Model}\label{missing}
 Since the data contain many missing features caused by partially obscured images, our resulting model must also predict the presence of features.  To predict this we turn to a slightly modified version with a sigmoid non-linearity on the output layer and the binary cross-entropy loss function defined in \cref{eq:bin_cross}.
 
 \[\label{eq:bin_cross}
@@ -149,12 +164,40 @@ Semi-failed attempt to train missing signals and coordinates simultaneously.
 
 \subsection{Putting It All Together}
 
+In \cref{fig:avg_face_rmse}, we show an ``average'' face, i.e., one that is a composite of all images in our data set. On the image is the average location of each keypoint (marked with a ``+'' sign), and the shaded circles show the average deviation of the predicted keypoints from the actual keypoints. Colors correspond to the model used for each set of keypoints (i.e. eye corners were all predicted with one model, so they are all depicted in yellow).
+
+We can consider the accuracy of our model in two different ways: the RMSE of each keypoint coordinate (shown in \cref{tab:rmse}), or the Euclidean distance of the predicted keypoint $(x,y)$ coordinate from the actual $(x,y)$ coordinate (shown in \cref{tab:rmse}; these are represented by the circles in \cref{fig:avg_face_rmse}). 
+
+From the distances between predicted in actual keypoints in \cref{tab:radius}, we can see that the model is best at predicting eye features. The top of the list (ordered from most to least accurate) is comprised entirely of the eye-related features (eye centers, eye corners, and eyebrows). We can see in \cref{fig:avg_face_rmse} that the radii around the eye features are smaller than those of the nose and mouth features. The most accurate keypoint is the inner corner of the right eye, which has a distance between the predicted and actual keypoints of just over three pixels.
+
+Conversely, the model is not very good at predicting where the tip of a nose is. It is the least accurate keypoint, with a mean distance between the predicted and actual value of over six pixels.
+
 \begin{figure}[!htb]
   \centering
   \caption{Average Face with Estimated Keypoints}
   \includegraphics[scale=.5]{avg_face_rmse.pdf}
   \label{fig:avg_face_rmse}
 \end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \caption{Most Accurate Predictions (Average RMSE = 1.768764)}
+  \includegraphics[scale=.6]{best_faces.pdf}
+  \label{fig:best_faces}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \caption{Least Accurate Predictions (Average RMSE = 7.874467)}
+  \includegraphics[scale=.6]{worst_faces.pdf}
+  \label{fig:worst_faces}
+\end{figure}
+
+\subsection{Model Evaluation}
+
+One baseline to judge model performance is how well we predict relative to naive averaging of keypoints. That is, one simple algorithm would be to predict--for all faces in the data set--the average of each keypoint across all faces. Doing so yields an average RMSE (across all keypoints) of 3.600 (compared to an average RMSE of 3.34 for our neural network). Ultimately, our algorithm only performs about 3.5 percent better than naive averaging.
+
+One feature that stands out when examining the badly mis-predicted faces in \cref{fig:worst_faces} is that the model tends to predict keypoints close to their average values regardless of how the face in a given image is oriented.
 
 \section{Kaggle Submission}
 Ranking?
@@ -163,6 +206,12 @@ Ranking?
 \begin{enumerate}
 \item Engagement Detection
 \end{enumerate}
+
+\appendices
+\section{Keypoint Accuracy Figures}
+
+\input{rmse.tex}
+\input{radius.tex}
 
 \medskip
 

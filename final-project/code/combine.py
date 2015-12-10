@@ -119,12 +119,18 @@ def process_pred_main(options):
                          filename, os.path.join(options.in_dir, out_file))
 
 
+def process_kaggle_main(options):
+    process_pred(options.in_dir, "kaggle.csv",
+                 os.path.join(options.in_dir, "kaggle.csv"))
+
+
 def real_main(options):
     if options.which == "loss":
         process_loss_main(options)
     elif options.which == "pred":
         process_pred_main(options)
-        pass
+    elif options.which == "kaggle":
+        process_kaggle_main(options)
     elif options.which == "all":
         process_pred_main(options)
         process_loss_main(options)
@@ -139,8 +145,8 @@ def main():
     parser.add_argument(
         '-d', '--dir', dest='in_dir', help="Input Directory", required=True)
     parser.add_argument(
-        'which', nargs="?", choices=["loss", "pred", "all"], default="all",
-        help="What files to process")
+        'which', nargs="?", choices=["loss", "pred", "all", "kaggle"],
+        default="all", help="What files to process")
     options = parser.parse_args()
 
     real_main(options)

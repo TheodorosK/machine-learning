@@ -50,7 +50,6 @@ class DataReader:
             'Y_Labels': self._y_labels
         }
 
-
 class FaceReader(DataReader):
     '''Reads the facial keypoint training data and caches using pickler.
     '''
@@ -110,3 +109,30 @@ class FaceReader(DataReader):
         self._set_xy(FaceReader.__reshape_data(x_values), y_values,
                      range(len(x_values)), y_labels)
         return self.get_data()
+
+
+def ReadTestCSV(filename, picklefile):
+    if os.path.exists(picklefile):
+        print "Reading pickle file"
+        with open(picklefile, mode='rb') as fd:
+            u = pickle.Unpickler(fd)
+            indices = u.load()
+            x_values = u.load()
+    else:
+        print "Reading Test.csv"
+        df = pd.read_csv(filename, sep=',', engine='c', index_col=False)
+        indices = df.values[:, 0]
+        x_values = np.array(map(lambda x: map(int, x.split()),
+                                df.values[:, 1]))
+        print "Writing Pickle File"
+        with open(picklefile, mode='wb') as fd:
+            p = pickle.Pickler(fd, protocol=2)
+            p.dump(indices)
+            p.dump(x_values)
+
+    x_values = (np.asarray(x_values, dtype='float64') / 255.).reshape(
+        len(x_values), 1, 96, 96)
+    return {
+        'X': x_values,
+        'Index': indices
+    }

@@ -206,7 +206,8 @@ def combine_loss(options, feature_groups):
         aggregated_loss.to_csv(write_fd)
 
 
-def train_feature(options, selected, nnet_config, original_data, feature_cols):
+def train_feature(options, selected, nnet_config,
+                  original_data, feature_cols, kaggle):
     #
     # Instantiate and Build the Convolutional Multi-Level Perceptron
     #
@@ -243,7 +244,7 @@ def train_feature(options, selected, nnet_config, original_data, feature_cols):
                                    selected, loss_log, resumer)
     trainer.train(options.num_epochs)
 
-    if options.amputate or options.predict:
+    if options.amputate or options.predict or options.kaggle:
         def write_pred(data, filename, header):
             data_frame = pd.DataFrame(data, columns=header)
             data_frame[['index']] = data_frame[['index']].astype(int)
@@ -258,27 +259,35 @@ def train_feature(options, selected, nnet_config, original_data, feature_cols):
         last_layer_header = None
         if not options.amputate:
             last_layer_header = prediction_header
+        if options.predict:
+            index_train = np.transpose([original_data['train']['Index']])
+            index_valid = np.transpose([original_data['validate']['Index']])
 
-        index_train = np.transpose([original_data['train']['Index']])
-        index_valid = np.transpose([original_data['validate']['Index']])
+            last_layer_train = np.concatenate(
+                (index_train, trainer.predict_y(original_data['train']['X'])),
+                axis=1)
+            last_layer_val = np.concatenate(
+                (index_valid, trainer.predict_y(original_data['validate']['X'])),
+                axis=1)
+            write_pred(last_layer_train, "last_layer_train.csv",
+                       last_layer_header)
+            write_pred(last_layer_val, "last_layer_val.csv",
+                       last_layer_header)
+            all_data = select_data(options, feature_cols, original_data, True)
+            write_pred(np.concatenate(
+                    (index_train, all_data['train']['Y']), axis=1),
+                "y_train.csv", prediction_header)
+            write_pred(np.concatenate(
+                    (index_valid, all_data['validate']['Y']), axis=1),
+                "y_validate.csv", prediction_header)
 
-        last_layer_train = np.concatenate(
-            (index_train, trainer.predict_y(original_data['train']['X'])),
-            axis=1)
-        last_layer_val = np.concatenate(
-            (index_valid, trainer.predict_y(original_data['validate']['X'])),
-            axis=1)
-        write_pred(last_layer_train, "last_layer_train.csv",
-                   last_layer_header)
-        write_pred(last_layer_val, "last_layer_val.csv",
-                   last_layer_header)
-        all_data = select_data(options, feature_cols, original_data, True)
-        write_pred(np.concatenate(
-                (index_train, all_data['train']['Y']), axis=1),
-            "y_train.csv", prediction_header)
-        write_pred(np.concatenate(
-                (index_valid, all_data['validate']['Y']), axis=1),
-            "y_validate.csv", prediction_header)
+        if options.kaggle:
+            kaggle_test = np.concatenate(
+                (np.transpose([kaggle['Index']]),
+                 trainer.predict_y(kaggle['X'])),
+                axis=1)
+            write_pred(kaggle_test, "kaggle.csv", prediction_header)
+
         print "  took {:.3f}s".format(time.time() - start_time)
 
 
@@ -317,6 +326,11 @@ def train_main(options):
                               fast_nrows=options.num_rows)
     faces.load_file()
     print "Read Took {:.3f}s".format(time.time() - start_time)
+
+    kaggle = None
+    if options.kaggle:
+        kaggle = fileio.ReadTestCSV(
+            "../../data/test.csv", "../../data/test.pkl")
 
     #
     # Partition the Dataset
@@ -372,7 +386,8 @@ def train_main(options):
         print_partition_shapes(selected)
         print "Selecting Data Took {:.3f}s".format(time.time() - start_time)
 
-        train_feature(options, selected, nnet_config, partitions, feature_cols)
+        train_feature(options, selected, nnet_config,
+                      partitions, feature_cols, kaggle)
 
         #
         # Change back to the run directory for the next run.
@@ -424,6 +439,9 @@ def main():
     parser.add_argument(
         '--predict', dest='predict', action="store_true",
         help="predict output after training")
+    parser.add_argument(
+        '--kaggle', dest='kaggle', action="store_true",
+        help="load the test data and predict values for kaggle")
 
     train_group = parser.add_argument_group(
         "Training Control", "Options for Controlling Training")
