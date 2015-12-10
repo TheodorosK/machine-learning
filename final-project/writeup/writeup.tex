@@ -15,11 +15,9 @@ University of Chicago Booth School of Business\\
 
 \maketitle
 
-\section{Summary}
+\section{Introduction}
 
-\section{Modelling}
-
-\subsection{Facial Keypoints Introduction}\label{intro}
+\subsection{Problem Summary}
 
 The goal of this paper is to predict the $(x,y)$ coordinates of 15 facial keypoints for a given set of 96-by-96 grayscale images. The keypoints are:
 \begin{itemize}
@@ -44,13 +42,7 @@ The criterion for model accuracy (and evaluation in the Kaggle contest) is the r
   \label{fig:random_faces}
 \end{figure}
 
-\subsection{Building a Model (Tools \& Software)}
-
-The main tool we use in this paper is a multilayer convolutional neural network. We built and trained the model in Python using the Theano and Lasagne libraries.\footnote{Lasagne is "a lightweight library to build and train neural networks in Theano." See \url{https://github.com/Lasagne/Lasagne} for details.} One advantage of this technology stack is that computation can be carried out on a graphics card (GPU) which can significantly improve calculation speed.
-
-To take advantage of Theano's GPU capability, we set up our computing environment using a g2.2xlarge EC2 instance from Amazon Web Services. Doing so gave us access to an NVIDIA GPUs with 1536 CUDA cores that performed the bulk of the calculation. In our case, the performance improvement from utilizing the g2.2xlarge instance (compared to running locally) was approximately 40x.
-
-\subsection{Feature Groups}
+\subsection{Data}
 
 As discussed in \cref{intro}, most images do not contain all keypoints, which presents a problem when we are trying to train our model. One naive solution would be to throw out all faces without all keypoints, but doing so would remove 4909 images from our training data set (out of 7049 total images)--about 70 percent of our data.
 
@@ -69,30 +61,14 @@ Splitting the features into groups like this requires that we train six models, 
 
 A related point is that we will also need to predict whether or not a keypoint is contained in a feature, so that we can predict an empty value for keypoints that are likely to be missing in the test set. We discuss this model more fully in \cref{missing}.
 
-\subsection{Initial Models}
-What we tried in a nutshell:
-\begin{enumerate}
-\item 3-level - 1 convolutional, 2 dense
-\item 6-level - 3 convolutional, 3 dense
-\item 6-level with dropout
-\item Batch-size changes - size positively correlated with minimum loss-floor.
-\item Varying learning rate/momentum: static, and dynamic (as prescribed by \cite{lasagnenesterov} to balance increasing momentum must decrease learning rate)
-\item Wider layers
-\item More/Less Dropout
-\item Image Preprocessing
-\item Amputated w/RF
-\end{enumerate}
+\subsection{Tools and Software}
 
-Dropout, l1/l2 regularization, and momentum/learning rate.
+The main tool we use in this paper is a multilayer convolutional neural network. We built and trained the model in Python using the Theano and Lasagne libraries.\footnote{Lasagne is "a lightweight library to build and train neural networks in Theano." See \url{https://github.com/Lasagne/Lasagne} for details.} One advantage of this technology stack is that computation can be carried out on a graphics card (GPU) which can significantly improve calculation speed.
 
+To take advantage of Theano's GPU capability, we set up our computing environment using a g2.2xlarge EC2 instance from Amazon Web Services. Doing so gave us access to an NVIDIA GPUs with 1536 CUDA cores that performed the bulk of the calculation. In our case, the performance improvement from utilizing the g2.2xlarge instance (compared to running locally) was approximately 40x.
 
-Using the advice given in Andrew Ng's paper on regularization \cite{ng2004feature}, by acknowledging the fact that we have a dimensionally large input data-set, we choose to apply L1 regularization. <Talk about how we do see a more gradual, but smoother drop in the loss function>
+\section{Missing Feature Model}
 
-Should plot some validation loss (rmse).
-
-Include any citations for the blog we ran across with \cite{dnouri}
-
-\subsection{Missing Feature Model}\label{missing}
 Since the data contain many missing features caused by partially obscured images, our resulting model must also predict the presence of features.  To predict this we turn to a slightly modified version with a sigmoid non-linearity on the output layer and the binary cross-entropy loss function defined in \cref{eq:bin_cross}.
 
 \[\label{eq:bin_cross}
@@ -156,13 +132,56 @@ It turns out that, given the optimization condition, the best cutoff for all of 
   \label{fig:roc_left_eye_center}
 \end{figure}
 
-
 \input{logistic_cutoff_table.tex}
+
+
+\section{Individual Keypoint Models}
+
+In this section we will present a subset of the models we experimented with and report performance statistics for each. We will also discuss some auxiliary modeling techniques that we investigated.
+
+\subsection{Three Layers}
+
+Our baseline model is a neural network with three layers: 1 convolutional layer and 2 dense layers. The hope for the convolutional layer is that it would allow the network to automatically detect low-level features of the images (i.e. edge detection). 
+
+\subsection{Three Layers with Regularization}
+
+We augmented our baseline model (three layers; 1 convolutional and 2 dense) with regularization. Following \cite{ng2004feature}, we focus on L1 regularization because we have a dimensionally large input data set (each image has 96x96 pixels, where each pixel is a feature). 
+
+Compared to the model without regularization, we find that the loss function falls more gradually and more smoothly. This is because the cost function now has a second term that penalizes model complexity, so that early on in the training cycle the model is less able to fit the data. The benefit of regularization is that the model (hopefully) is better at understanding images that it has not seen before. In other words, we are hoping to move the model more towards the optimal trade-off between bias and variance.
+
+\subsection{Six Layers}
+
+Next, we tried increasing the number of layers to six, with 3 convolutional layers and 3 dense layers. Following \cite{benlecun2007}, the hope here is that increasing the depth of the network would increase its predictive accuracy. Additional convolutional layers should, in theory, allow the network to discover or learn more than just the low-level features of the images and hopefully increase its ability to identify specific keypoints.
+
+\subsection{Six Layers with Regularization}
+
+We augmented our six layer model described above to include L2 regularization as described above. Once again, the goal here is to prevent the model from over-fitting to the images that it trains on, so penalizing model complexity should increase the out-of-sample accuracy.
+
+\subsection{Six Layers with Regularization and Dropout}
+
+Finally, we augmented our six layer model including L2 regularization to include dropout. Similar to regularization, the goal is to choose a simpler model, but instead of adjusting the cost function we instead alter the structure of the network by deleting nodes in the intermediate layers. As with regularization, the goal of dropout is to prevent the model from over-fitting on the images it sees and increase predictive accuracy of images that it has not trained on.
+
+\subsection{Other Modeling Choices}
+
+Bath size changes; learning rate, momentum; wider layers, more/less dropout; image pre-processing; random forest with output layer
+
+
+
+Should plot some validation loss (rmse).
+
+Include any citations for the blog we ran across with \cite{dnouri}
+
+\section{Other Models}
 
 \subsection{Combined Loss Model}
 Semi-failed attempt to train missing signals and coordinates simultaneously.
 
-\subsection{Putting It All Together}
+\subsection{Amputated NN with Random Forest}
+Ugh
+
+\section{Discussion}
+
+\subsection{Best and Worst Performances}
 
 In \cref{fig:avg_face_rmse}, we show an ``average'' face, i.e., one that is a composite of all images in our data set. On the image is the average location of each keypoint (marked with a ``+'' sign), and the shaded circles show the average deviation of the predicted keypoints from the actual keypoints. Colors correspond to the model used for each set of keypoints (i.e. eye corners were all predicted with one model, so they are all depicted in yellow).
 
@@ -171,6 +190,15 @@ We can consider the accuracy of our model in two different ways: the RMSE of eac
 From the distances between predicted in actual keypoints in \cref{tab:radius}, we can see that the model is best at predicting eye features. The top of the list (ordered from most to least accurate) is comprised entirely of the eye-related features (eye centers, eye corners, and eyebrows). We can see in \cref{fig:avg_face_rmse} that the radii around the eye features are smaller than those of the nose and mouth features. The most accurate keypoint is the inner corner of the right eye, which has a distance between the predicted and actual keypoints of just over three pixels.
 
 Conversely, the model is not very good at predicting where the tip of a nose is. It is the least accurate keypoint, with a mean distance between the predicted and actual value of over six pixels.
+
+\input{rmse.tex}
+\input{radius.tex}
+
+\subsection{Model Evaluation}
+
+One baseline to judge model performance is how well we predict relative to naive averaging of keypoints. That is, one simple algorithm would be to predict--for all faces in the data set--the average of each keypoint across all faces. Doing so yields an average RMSE (across all keypoints) of 3.600 (compared to an average RMSE of 3.34 for our neural network). Ultimately, our algorithm only performs about 3.5 percent better than naive averaging.
+
+One feature that stands out when examining the badly mis-predicted faces in \cref{fig:worst_faces} is that the model tends to predict keypoints close to their average values regardless of how the face in a given image is oriented.
 
 \begin{figure}[!htb]
   \centering
@@ -193,30 +221,9 @@ Conversely, the model is not very good at predicting where the tip of a nose is.
   \label{fig:worst_faces}
 \end{figure}
 
-\subsection{Model Evaluation}
-
-One baseline to judge model performance is how well we predict relative to naive averaging of keypoints. That is, one simple algorithm would be to predict--for all faces in the data set--the average of each keypoint across all faces. Doing so yields an average RMSE (across all keypoints) of 3.600 (compared to an average RMSE of 3.34 for our neural network). Ultimately, our algorithm only performs about 3.5 percent better than naive averaging.
-
-One feature that stands out when examining the badly mis-predicted faces in \cref{fig:worst_faces} is that the model tends to predict keypoints close to their average values regardless of how the face in a given image is oriented.
-
 \section{Kaggle Submission}
-Ranking?
-
-\section{Applications}
-\begin{enumerate}
-\item Engagement Detection
-\end{enumerate}
-
-\appendices
-\section{Keypoint Accuracy Figures}
-
-\input{rmse.tex}
-\input{radius.tex}
-
-\medskip
 
 \bibliographystyle{IEEEtran}
-% \bibliographystyle{unsrt}
 \bibliography{citations}
 
 \end{document}
