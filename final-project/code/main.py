@@ -225,7 +225,18 @@ def train_feature(options, selected, nnet_config, original_data, feature_cols):
 
     # rotate selected['train']
     rotator = preprocess.Rotate()
-    rotated = rotator.do_rotations_append(selected['train'])
+    if options.action == ACTION_TRAIN_MISSING:
+        rotated = rotator.do_rotations_append({
+                'X': selected['train']['X'],
+                'Y': np.zeros((len(selected['train']['Y']), 2)),
+                'Index': selected['train']['Index'],
+                'Y_Labels': selected['train']['Y_Labels']
+        })
+        rotated['Y'] = np.concatenate(
+            (selected['train']['Y'], selected['train']['Y'],
+             selected['train']['Y'], selected['train']['Y']))
+    else:
+        rotated = rotator.do_rotations_append(selected['train'])
 
     augmented = selected
     augmented['train'] = rotated
@@ -233,6 +244,7 @@ def train_feature(options, selected, nnet_config, original_data, feature_cols):
     print_partition_shapes(selected)
     print_partition_shapes(augmented)
     selected = augmented
+
     #
     # Finally, launch the training loop.
     #
