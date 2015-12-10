@@ -32,8 +32,8 @@ im.raw <- do.call(rbind, im.raw)
 set.seed(0x0DedBeef)
 num.faces <- 8
 rand.idx <- sample(1:nrow(dat.raw), num.faces)
-PlotSetup("random_faces")
-par(mfrow=c(2,4), mar = c(0,0,0,0))
+pdf("../writeup/random_faces.pdf", width=96*4/72, height=96*2/72)
+par(mfrow=c(2,4), mar = c(0,0,0,0), pty="s")
 for (i in 1:num.faces) {
   image(matrix(im.raw[rand.idx[i],], 96, 96), 
         col = im.col, xaxt='n', yaxt='n')
@@ -41,7 +41,7 @@ for (i in 1:num.faces) {
   kpy <- dat.raw[rand.idx[i], seq(2, length(avg.kp), 2)]
   points(kpx/96, kpy/96, col='red', pch='+')
 }
-PlotDone()
+dev.off()
 
 # Visualize accuracy ##########################################################
 
@@ -69,6 +69,13 @@ rmse <- sapply(names(dat.raw), function(f) {
   yhat <- valid.pred[idx.pred, f]
   return(sqrt(mean((y-yhat)^2, na.rm=T)))
 })
+rmse[order(rmse)]
+
+rmse.tab <- data.frame(name=gsub("_", " ", names(rmse)), rmse=rmse)
+rmse.tab <- rmse.tab[order(rmse.tab$rmse),]
+ExportTable(table=rmse.tab, file="rmse", 
+            caption="RMSE for Predicted Keypoints", 
+            colnames = c("Keypoint", "RMSE"), include.rownames=F)
 
 radius <- sapply(features, function(f) {
   idx.pred <- (valid.pred[, paste("missing", f, sep="_")] < 0.5) &
@@ -80,6 +87,13 @@ radius <- sapply(features, function(f) {
   radius <- mean(sqrt((x-xhat)^2+(y-yhat)^2))
   return(radius)
 })
+radius[order(radius)]
+
+radius.tab <- data.frame(name=gsub("_", " ", names(radius)), radius=radius)
+radius.tab <- radius.tab[order(radius.tab$radius),]
+ExportTable(table=radius.tab, file="radius", 
+            caption="Average Euclidean Distance between Predicted and Actual Keypoints", 
+            colnames = c("Keypoint", "Average Distance"), include.rownames=F)
 
 # Colors
 pal <- gg_color_hue(6)
@@ -122,8 +136,10 @@ img.rmse <- img.rmse[img.rmse$index %in% allthere.idx,]
 
 # Order from most to least accurate
 img.rmse <- img.rmse[order(img.rmse$rmse), ]
+pdf("../writeup/best_faces.pdf", width=96*3/72, height=96*2/72)
+par(mfrow=c(2,3), mar = c(0,0,0,0), pty="s")
 for (i in 1:6) {
-  PlotSetup(paste("good_face", i, sep=""))
+#   PlotSetup(paste("good_face", i, sep=""))
   
   idx <- img.rmse$index[i]
   # Plot face
@@ -134,6 +150,8 @@ for (i in 1:6) {
   kpx.pred <- valid.pred[valid.pred$index==idx, grep("_x", names(valid.pred))]
   kpy.pred <- valid.pred[valid.pred$index==idx, grep("_y", names(valid.pred))]
   
+  print(paste(kpx.pred[1:3],kpy.pred[1:3]))
+  
   # Actual keypoints
   kpx.actual <- valid.actual[valid.actual$index==idx, grep("_x", names(valid.actual))]
   kpy.actual <- valid.actual[valid.actual$index==idx, grep("_y", names(valid.actual))]
@@ -141,13 +159,17 @@ for (i in 1:6) {
   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
   
-  PlotDone()
+#   PlotDone()
 }
+dev.off()
+mean(img.rmse[1:6,]$rmse) # average rmse
 
 # Order from least to most accurate
 img.rmse <- img.rmse[order(img.rmse$rmse, decreasing = T), ]
+pdf("../writeup/worst_faces.pdf", width=96*3/72, height=96*2/72)
+par(mfrow=c(2,3), mar = c(0,0,0,0), pty="s")
 for (i in 1:6) {
-  PlotSetup(paste("bad_face", i, sep=""))
+#   PlotSetup(paste("bad_face", i, sep=""))
   
   idx <- img.rmse$index[i]
   
@@ -166,17 +188,12 @@ for (i in 1:6) {
   points(kpx.pred/96, kpy.pred/96, col='red', pch='+')
   points(kpx.actual/96, kpy.actual/96, col='green', pch='o')
   
-  PlotDone()
+#   PlotDone()
 }
+dev.off()
+mean(img.rmse[1:6,]$rmse) # average rmse
 
-# Look for off-by-one
-# 
-# test.idx <- 100
-# test.row <- as.matrix(valid.actual[test.idx, 2:31])
-# diff <- sapply(1:nrow(dat.raw), function(r) {
-#   return(sum(abs(as.matrix(dat.raw[r,]) - test.row), na.rm=T))
-# })
-# which.min(diff)-1
-# valid.actual$index[test.idx]
-# 
-# 
+## Compare to naive averaging
+naive.rmse <- sapply(1:ncol(dat.raw), function(c) {
+  sqrt(mean((dat.raw[,c] - avg.kp[c])^2, na.rm=T))
+})
